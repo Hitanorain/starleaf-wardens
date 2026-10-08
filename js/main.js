@@ -111,10 +111,10 @@
     if (G.UI.ring) G.UI.setTool(null);
   };
   // 地图缩略图：把每种地图用同一个种子生成一次，拍一张照片
-  G.makeThumbs = function (seed) {
-    const thumbs = {};
+  G.makeThumbs = function (seed, only) {
+    const thumbs = Object.assign({}, G.UI.thumbs || {});
     const keep = G.biome || 'forest';
-    for (const b of Object.keys(G.BIOMES)) {
+    for (const b of only || Object.keys(G.BIOMES)) {
       G.newMap(seed, b);
       const bd = Wd.bounds();
       camera.clearViewOffset();

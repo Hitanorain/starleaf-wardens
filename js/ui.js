@@ -29,17 +29,22 @@
         return `<button data-biome="${k}" class="${G.biome === k ? 'on' : ''}"><div class="thumb" ${img}><span class="bi">${b.icon}</span><span class="ok">✓</span></div>
           <div class="bt"><b>${b.name}</b><small>${b.desc}</small></div></button>`;
       }).join('');
+      // 切换地图时同时随机一个新布局，并重拍这张地图的缩略图
       $('#biomes').querySelectorAll('button').forEach(btn => btn.onclick = () => {
         if (G.biome === btn.dataset.biome) return;
-        G.newMap(UI.seed, btn.dataset.biome); UI.drawBiomes();
+        UI.seed = Math.floor(Math.random() * 99999);
+        G.biome = btn.dataset.biome;
+        G.makeThumbs(UI.seed, [G.biome]);
+        G.newMap(UI.seed, G.biome); UI.drawBiomes();
       });
       $('#seed').textContent = UI.seed;
       $('#pv-seed').textContent = UI.seed;
       $('#pv-name').textContent = G.BIOMES[G.biome].name;
     };
+    // 换一个布局：同一种地图，重新随机生成地形
     $('#title-reroll').onclick = () => {
       UI.seed = Math.floor(Math.random() * 99999);
-      G.makeThumbs(UI.seed);
+      G.makeThumbs(UI.seed, [G.biome]);
       G.newMap(UI.seed);
       UI.drawBiomes();
     };
