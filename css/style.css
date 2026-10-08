@@ -328,7 +328,7 @@ body.on-title #wave-panel, body.on-title #tower-panel, body.on-title #region-pan
 .tpanel::-webkit-scrollbar { width: 6px; } .tpanel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
 .tbanner { position: relative; height: 150px; overflow: hidden; border-radius: 24px 24px 0 0;
   background: radial-gradient(circle at 30% 30%, #fbe3f1, #a9b4ea 60%, #5f6fbf); }
-.tbanner img { width: 100%; height: 100%; object-fit: cover; object-position: 20% 18%; }
+.tbanner img { width: 100%; height: 100%; object-fit: cover; object-position: 30% 6%; }
 .tbanner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(26,20,52,0) 40%, rgba(26,20,52,0.95)); }
 #title-luna { position: absolute; left: 50%; bottom: -2px; transform: translateX(-50%); z-index: 2; margin: 0;
   width: 92px; height: 92px; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
