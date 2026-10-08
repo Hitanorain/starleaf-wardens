@@ -315,9 +315,10 @@ body.on-title #wave-panel, body.on-title #tower-panel, body.on-title #region-pan
 #screen-title[hidden] { display: none; }
 /* 主视觉：铺满上方，底部渐隐到 3D 场景里 */
 .hero-art {
-  position: absolute; left: 0; top: 0; width: 100%; height: 66vh; object-fit: cover; object-position: center 32%;
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
-  mask-image: linear-gradient(180deg, #000 0%, #000 52%, transparent 100%);
+  /* 铺满整屏高度、顶部对齐：宽屏下也只裁掉图片底部，仙子始终完整 */
+  position: absolute; left: 0; top: 0; width: 100%; height: 100vh; object-fit: cover; object-position: center top;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 38%, rgba(0,0,0,0.35) 58%, transparent 78%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 38%, rgba(0,0,0,0.35) 58%, transparent 78%);
   animation: heroIn 1.2s ease;
 }
 @keyframes heroIn { from { opacity: 0; transform: scale(1.04); } }
