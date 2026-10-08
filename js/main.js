@@ -183,12 +183,11 @@
 
     const c = G.cam;
     if (S.phase === 'title') {
-      // 标题画面：镜头缓慢环绕地图；地图整体右移，让出左侧面板的位置
+      // 标题画面：镜头缓慢环绕；地图整体下移到屏幕下半部分，上方留给主视觉和菜单
       c.yaw = 0.5 + time * 0.045;
-      c.pitch = 0.84;
-      c.dist = G.fitDist() * (window.innerWidth > 900 ? 0.9 : 1.1);
-      const shift = window.innerWidth > 900 ? 230 : 0;
-      camera.setViewOffset(window.innerWidth, window.innerHeight, -shift, 0, window.innerWidth, window.innerHeight);
+      c.pitch = 0.8;
+      c.dist = G.fitDist() * 1.05;
+      camera.setViewOffset(window.innerWidth, window.innerHeight, 0, -window.innerHeight * 0.24, window.innerWidth, window.innerHeight);
     }
     if (c.goal) {
       const k = Math.min(1, dt * 3);

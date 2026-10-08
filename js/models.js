@@ -119,8 +119,58 @@
     return g;
   };
 
+  // 雪地：积雪松树、雪人、挂雪枯树、冰晶
+  M.snowPlant = function (rng, kind) {
+    const g = new THREE.Group();
+    const k = kind !== undefined ? kind : rng();
+    const snow = M.mat(0xf4f8fc), snow2 = M.mat(0xe2eaf4);
+    if (k < 0.5) {            // 积雪松树
+      part(g, GEO.cyl6, M.mat(0x6a4a36), [0, 0.15, 0], [0.07, 0.3, 0.07]);
+      const greens = [0x2f5f4a, 0x3a6e54, 0x467a5e];
+      for (let i = 0; i < 3; i++) {
+        const r = 0.42 - i * 0.1, y = 0.4 + i * 0.25;
+        part(g, GEO.cone6, M.mat(greens[i]), [0, y, 0], [r, 0.45, r], [0, rng() * 3, 0]);
+        part(g, GEO.cone6, snow, [0, y + 0.1, 0], [r * 0.82, 0.26, r * 0.82], [0, rng() * 3, 0]);
+      }
+    } else if (k < 0.68) {    // 雪人
+      part(g, GEO.sphere, snow, [0, 0.17, 0], [0.2, 0.18, 0.2]);
+      part(g, GEO.sphere, snow, [0, 0.44, 0], [0.14, 0.13, 0.14]);
+      part(g, GEO.sphere, snow, [0, 0.64, 0], [0.1, 0.1, 0.1]);
+      part(g, GEO.cone6, M.mat(0xff8a3a), [0, 0.64, 0.13], [0.025, 0.12, 0.025], [Math.PI / 2, 0, 0]);
+      for (const s of [1, -1]) {
+        part(g, GEO.sphere, M.mat(0x2a2a34), [s * 0.04, 0.68, 0.085], 0.015);
+        part(g, GEO.cyl6, M.mat(0x6a4a36), [s * 0.2, 0.47, 0], [0.012, 0.24, 0.012], [0, 0, s * 1.1]);
+      }
+      for (let i = 0; i < 3; i++) part(g, GEO.sphere, M.mat(0x2a2a34), [0, 0.38 + i * 0.07, 0.135], 0.013);
+      part(g, GEO.cyl8, M.mat(0xd94a5a), [0, 0.54, 0], [0.12, 0.04, 0.12]);                    // 红围巾
+      part(g, GEO.box, M.mat(0xd94a5a), [0.07, 0.48, 0.09], [0.04, 0.12, 0.02], [0.2, 0, 0.2]);
+      part(g, GEO.cyl8, M.mat(0x2a2a34), [0, 0.76, 0], [0.08, 0.1, 0.08]);                    // 帽子
+      part(g, GEO.cyl8, M.mat(0x2a2a34), [0, 0.71, 0], [0.12, 0.015, 0.12]);
+    } else if (k < 0.84) {    // 挂雪的枯树
+      const wood = M.mat(0x5a4a42);
+      part(g, GEO.cyl6, wood, [0, 0.3, 0], [0.05, 0.6, 0.05], [0, 0, 0.08]);
+      for (let i = 0; i < 4; i++) {
+        const a = rng() * Math.PI * 2, y = 0.42 + i * 0.07;
+        const b = part(g, GEO.cyl6, wood, [Math.cos(a) * 0.1, y, Math.sin(a) * 0.1], [0.022, 0.3, 0.022], [Math.sin(a) * 0.8, 0, -Math.cos(a) * 0.8]);
+        part(g, GEO.box, snow2, [Math.cos(a) * 0.16, y + 0.1, Math.sin(a) * 0.16], [0.08, 0.025, 0.04], [0, -a, 0]);
+        void b;
+      }
+    } else {                  // 冰晶簇
+      part(g, GEO.dodec, M.mat(0x8a96aa), [0, 0.05, 0], [0.2, 0.08, 0.18]);
+      for (let i = 0; i < 5; i++) {
+        const a = i / 5 * Math.PI * 2 + rng(), h = 0.22 + rng() * 0.3;
+        part(g, GEO.oct, M.mat(0xbfeaff, { emissive: 0x5fb8e8, emissiveIntensity: 0.35, transparent: true, opacity: 0.88 }),
+          [Math.cos(a) * 0.09, h / 2 + 0.05, Math.sin(a) * 0.09], [0.05, h / 2, 0.05], [Math.sin(a) * 0.4, 0, -Math.cos(a) * 0.4]);
+      }
+    }
+    g.scale.setScalar(0.9 + rng() * 0.35);
+    g.rotation.y = rng() * Math.PI * 2;
+    return g;
+  };
+
   M.tree = function (rng) {
     if (G.biome === 'desert') return M.desertPlant(rng);
+    if (G.biome === 'snow') return M.snowPlant(rng);
     const g = new THREE.Group();
     const k = rng();
     if (k < 0.5) { // 松树

@@ -418,12 +418,17 @@
 
   // ---------- 环境：飘浮的光点（森林里是萤火虫，沙漠里是金色尘埃） ----------
   function buildEnvironment(grp, rng) {
-    const FN = 160;
+    Wd.snowing = !!G.BIOMES[G.biome].snowfall;
+    const FN = Wd.snowing ? 900 : 160;
     const fg = new THREE.BufferGeometry();
     Wd.fireSeeds = [];
-    for (let i = 0; i < FN; i++) Wd.fireSeeds.push([(rng() - 0.5) * (W + 4), 0.3 + rng() * 1.6, (rng() - 0.5) * (H + 4), rng() * 10]);
+    const sx = Wd.snowing ? W + 16 : W + 4, sz = Wd.snowing ? H + 14 : H + 4;
+    Wd.snowSpan = sx;
+    for (let i = 0; i < FN; i++) Wd.fireSeeds.push([(rng() - 0.5) * sx, 0.3 + rng() * (Wd.snowing ? 5 : 1.6), (rng() - 0.5) * sz, rng() * 10, 0.5 + rng() * 0.6]);
     fg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(FN * 3), 3));
-    Wd.fireflies = new THREE.Points(fg, new THREE.PointsMaterial({ size: 0.13, map: G.dotTex, color: M.lin(G.BIOMES[G.biome].motes, 2.2), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
+    Wd.fireflies = new THREE.Points(fg, new THREE.PointsMaterial(Wd.snowing
+      ? { size: 0.09, map: G.dotTex, color: M.lin(0xffffff, 1.3), transparent: true, opacity: 0.9, depthWrite: false }
+      : { size: 0.13, map: G.dotTex, color: M.lin(G.BIOMES[G.biome].motes, 2.2), transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
     Wd.fireflies.frustumCulled = false;
     grp.add(Wd.fireflies);
   }
@@ -432,9 +437,17 @@
   Wd.update = function (dt, time) {
     G.Terrain.update(dt, time);
     const fp = Wd.fireflies.geometry.attributes.position;
-    Wd.fireSeeds.forEach((s, i) => {
-      fp.setXYZ(i, s[0] + Math.sin(time * 0.4 + s[3]) * 0.6, s[1] + Math.sin(time * 0.9 + s[3] * 2) * 0.25, s[2] + Math.cos(time * 0.35 + s[3]) * 0.6);
-    });
+    if (Wd.snowing) {   // 飘雪：缓慢落下、左右摇摆，落地后回到高处
+      Wd.fireSeeds.forEach((s, i) => {
+        const y = 5.3 - ((5.3 - s[1] + time * 0.55 * s[4]) % 5.3);
+        const span = Wd.snowSpan, x = ((s[0] + time * 0.08 + span * 1.5) % span) - span / 2;   // 缓慢随风漂移并循环
+        fp.setXYZ(i, x + Math.sin(time * 0.8 * s[4] + s[3]) * 0.35, y, s[2] + Math.cos(time * 0.6 + s[3]) * 0.25);
+      });
+    } else {
+      Wd.fireSeeds.forEach((s, i) => {
+        fp.setXYZ(i, s[0] + Math.sin(time * 0.4 + s[3]) * 0.6, s[1] + Math.sin(time * 0.9 + s[3] * 2) * 0.25, s[2] + Math.cos(time * 0.35 + s[3]) * 0.6);
+      });
+    }
     fp.needsUpdate = true;
     const h = Wd.heartObj;
     h.crystal.rotation.y += dt * 1.2;

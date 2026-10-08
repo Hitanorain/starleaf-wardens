@@ -6,7 +6,7 @@
 <title>星叶守望</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=4">
+<link rel="stylesheet" href="css/style.css?v=5">
 </head>
 <body>
 <div id="app">
@@ -41,31 +41,35 @@
   <div id="paused" hidden>已暂停 · 按 P 继续</div>
   <div id="modal-bless" hidden></div>
 
-  <!-- 标题画面：左侧面板 + 右侧实时 3D 地图预览 -->
+  <!-- 标题画面：上方主视觉 + 横向菜单，下方 3D 地图实时预览 -->
   <div id="screen-title">
-    <aside class="tpanel">
-      <div class="tbanner">
-        <img src="assets/ui/title_4k.jpg" alt="" onerror="this.remove()">
+    <img class="hero-art" src="assets/ui/title_4k.jpg" alt="" onerror="this.remove()">
+    <div class="tcontent">
+      <div class="tbrand">
         <div id="title-luna"></div>
+        <div class="tname">
+          <h1>星叶守望</h1>
+          <div class="subtitle">以大地为棋，以高地为剑——守护月光古树</div>
+        </div>
       </div>
-      <div class="tbody">
-        <h1>星叶守望</h1>
-        <div class="subtitle">以大地为棋，以高地为剑——守护月光古树</div>
-        <div class="sec-label">选择地图</div>
-        <div class="biomes" id="biomes"></div>
-        <button id="title-start" class="cta">开始守护</button>
-        <div class="title-row">
+      <div class="tmenu">
+        <div class="tmaps">
+          <div class="sec-label">选择地图</div>
+          <div class="biomes" id="biomes"></div>
+        </div>
+        <div class="tactions">
+          <button id="title-start" class="cta">开始守护</button>
           <button id="title-reroll" class="ghost">🎲 换一张地图 <small>#<span id="seed"></span></small></button>
           <button id="title-help" class="ghost">❔ 玩法与操作</button>
         </div>
-        <ul class="howto">
-          <li><i>🧩</i><span><b>地形手牌</b>各种形状的地形块，搭出高地、拉长敌人路线</span></li>
-          <li><i>🗺</i><span><b>区域扩张</b>开拓新区域，把敌人的入口越推越远</span></li>
-          <li><i>🏹</i><span><b>高地建塔</b>地势越高，射程与伤害越强</span></li>
-          <li><i>🧚</i><span><b>月之仙子露娜</b>右键指挥，Q 流星雨、E 森之绽放</span></li>
-        </ul>
       </div>
-    </aside>
+      <ul class="howto">
+        <li><i>🧩</i><b>地形手牌</b><span>搭出高地、拉长路线</span></li>
+        <li><i>🗺</i><b>区域扩张</b><span>把敌人入口越推越远</span></li>
+        <li><i>🏹</i><b>高地建塔</b><span>越高射程与伤害越强</span></li>
+        <li><i>🧚</i><b>月之仙子露娜</b><span>Q 流星雨 · E 森之绽放</span></li>
+      </ul>
+    </div>
     <div class="preview-tag"><span class="pv-dot"></span><b id="pv-name"></b><small>地图预览 · #<span id="pv-seed"></span></small></div>
   </div>
 
@@ -119,14 +123,14 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="js/config.js?v=4"></script>
-<script src="js/models.js?v=4"></script>
-<script src="js/audio.js?v=4"></script>
-<script src="js/fx.js?v=4"></script>
-<script src="js/terrain.js?v=4"></script>
-<script src="js/world.js?v=4"></script>
-<script src="js/game.js?v=4"></script>
-<script src="js/ui.js?v=4"></script>
-<script src="js/main.js?v=4"></script>
+<script src="js/config.js?v=5"></script>
+<script src="js/models.js?v=5"></script>
+<script src="js/audio.js?v=5"></script>
+<script src="js/fx.js?v=5"></script>
+<script src="js/terrain.js?v=5"></script>
+<script src="js/world.js?v=5"></script>
+<script src="js/game.js?v=5"></script>
+<script src="js/ui.js?v=5"></script>
+<script src="js/main.js?v=5"></script>
 </body>
 </html>

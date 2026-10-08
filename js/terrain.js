@@ -117,7 +117,9 @@
       colors: [0x5e8a3f, 0x6f8f45, 0x7f9a4c, 0x9a6a4a, 0x8c6b4e], shadow: true, max: 1200 },
     pebble: { geo: () => merged([[new THREE.DodecahedronGeometry(1, 0), [0, 0.02, 0], [0.06, 0.035, 0.05]], [new THREE.DodecahedronGeometry(1, 0), [0.07, 0.015, 0.03], [0.035, 0.025, 0.03]]]),
       colors: [0x8f8a96, 0x847e74, 0x9e978a, 0x77727f], shadow: true, max: 1500 },
-    flower: { geo: () => G.biome === 'desert'
+    flower: { geo: () => G.biome === 'snow'
+      ? merged([[new THREE.OctahedronGeometry(1, 0), [0, 0.07, 0], [0.025, 0.08, 0.025], [0.2, 0, 0.1]], [new THREE.OctahedronGeometry(1, 0), [0.04, 0.05, 0.01], [0.018, 0.06, 0.018], [0, 0, -0.5]], [new THREE.OctahedronGeometry(1, 0), [-0.03, 0.045, -0.02], [0.016, 0.05, 0.016], [0.4, 0, 0.5]]])
+      : G.biome === 'desert'
       ? merged([[new THREE.CylinderGeometry(1, 1, 1, 6), [0, 0.07, 0], [0.03, 0.14, 0.03]], [new THREE.SphereGeometry(1, 6, 4), [0, 0.14, 0], [0.03, 0.025, 0.03]], [new THREE.CylinderGeometry(1, 1, 1, 6), [0.045, 0.07, 0], [0.018, 0.06, 0.018]], [new THREE.SphereGeometry(1, 6, 4), [0.06, 0.11, 0], [0.022, 0.03, 0.022]]])
       : merged([[new THREE.CylinderGeometry(1, 1, 1, 3), [0, 0.05, 0], [0.006, 0.1, 0.006]], [new THREE.IcosahedronGeometry(1, 0), [0, 0.11, 0], [0.03, 0.022, 0.03]], [new THREE.IcosahedronGeometry(1, 0), [0.05, 0.08, 0.02], [0.024, 0.018, 0.024]]]),
       colors: [0xfff7ea, 0xffe37a, 0xffb3d6, 0xd2bfff], shadow: false, max: 1000 },
@@ -202,6 +204,13 @@
     let np = 0, nb = 0;
     const desert = G.biome === 'desert';
     let pineCols = [0x3f7a4a, 0x4a8a50, 0x356b42, 0x5a9455], blossomCols = [0xe8a9c8, 0xf2c2d8, 0xc9a7e6, 0x7fa05a, 0x6e9a4e];
+    const snowy = G.biome === 'snow';
+    if (snowy) {    // 雪地：每棵松树都戴一顶雪帽（两个实例层用同一矩阵）
+      pines.geometry = merged([[new THREE.ConeGeometry(1, 1, 6), [0, 0.5, 0], [0.42, 0.5, 0.42]], [new THREE.ConeGeometry(1, 1, 6), [0, 0.78, 0], [0.33, 0.45, 0.33], [0, 0.5, 0]], [new THREE.ConeGeometry(1, 1, 6), [0, 1.03, 0], [0.23, 0.4, 0.23], [0, 1, 0]]]);
+      bushes.geometry = merged([[new THREE.ConeGeometry(1, 1, 6), [0, 0.6, 0], [0.35, 0.28, 0.35], [0, 0.3, 0]], [new THREE.ConeGeometry(1, 1, 6), [0, 0.86, 0], [0.27, 0.25, 0.27], [0, 0.8, 0]], [new THREE.ConeGeometry(1, 1, 6), [0, 1.1, 0], [0.18, 0.22, 0.18], [0, 1.3, 0]]]);
+      pineCols = [0x2f5f4a, 0x3a6e54, 0x2a5444, 0x467a5e];
+      blossomCols = [0xf4f8fc, 0xeaf0f8, 0xffffff];
+    }
     if (desert) {   // 沙漠：仙人掌 + 风化石柱
       pines.geometry = merged([[new THREE.CylinderGeometry(1, 1, 1, 6), [0, 0.45, 0], [0.09, 0.9, 0.09]], [new THREE.CylinderGeometry(1, 1, 1, 6), [0.16, 0.5, 0], [0.06, 0.3, 0.06]], [new THREE.CylinderGeometry(1, 1, 1, 6), [0.1, 0.36, 0], [0.12, 0.06, 0.06], [0, 0, Math.PI / 2]], [new THREE.CylinderGeometry(1, 1, 1, 6), [-0.15, 0.62, 0], [0.055, 0.26, 0.055]], [new THREE.CylinderGeometry(1, 1, 1, 6), [-0.09, 0.5, 0], [0.11, 0.055, 0.055], [0, 0, Math.PI / 2]]]);
       bushes.geometry = merged([[new THREE.DodecahedronGeometry(1, 0), [0, 0.25, 0], [0.35, 0.3, 0.3]], [new THREE.DodecahedronGeometry(1, 0), [0.05, 0.6, 0], [0.25, 0.25, 0.22]], [new THREE.DodecahedronGeometry(1, 0), [0, 0.88, 0.02], [0.17, 0.18, 0.16]]]);
@@ -215,11 +224,25 @@
       q.setFromAxisAngle(up, rng() * Math.PI * 2);
       mtx.compose(v.set(x, y, z), q, sc.setScalar(s2));
       trunks.setMatrixAt(i, mtx);
-      if (rng() < (desert ? 0.5 : 0.62)) { pines.setMatrixAt(np, mtx); pines.setColorAt(np++, C(pineCols[Math.floor(rng() * pineCols.length)])); }
+      if (snowy) {
+        pines.setMatrixAt(np, mtx); pines.setColorAt(np++, C(pineCols[Math.floor(rng() * pineCols.length)]));
+        bushes.setMatrixAt(nb, mtx); bushes.setColorAt(nb++, C(blossomCols[Math.floor(rng() * blossomCols.length)]));
+      } else if (rng() < (desert ? 0.5 : 0.62)) { pines.setMatrixAt(np, mtx); pines.setColorAt(np++, C(pineCols[Math.floor(rng() * pineCols.length)])); }
       else { bushes.setMatrixAt(nb, mtx); bushes.setColorAt(nb++, C(blossomCols[Math.floor(rng() * blossomCols.length)])); }
     });
     pines.count = np; bushes.count = nb;
     for (const m of [trunks, pines, bushes]) { m.castShadow = true; m.receiveShadow = true; grp.add(m); }
+    // 雪地：地图外散落几个雪人
+    if (snowy) {
+      for (let i = 0; i < 14; i++) {
+        const x = (rng() - 0.5) * 50, z = -26 + rng() * 40;
+        const d = Math.max(Math.abs(x) - W / 2, Math.abs(z) - H / 2);
+        if (d < 1.2) continue;
+        const sm = M.snowPlant(rng, 0.6);
+        sm.position.set(x, outer(x, z, tc), z);
+        grp.add(sm);
+      }
+    }
     // 小山丘：几块抬高的土块
     for (let k = 0; k < (desert ? 34 : 18); k++) {
       const cx = Math.round((rng() - 0.5) * 40), cz = Math.round(-16 + rng() * 26);

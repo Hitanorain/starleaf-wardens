@@ -186,4 +186,16 @@ G.BIOMES = {
     sky: ['#7a6ab0', '#d9a8a0', '#f4cfa8', '#f8e4c8'], fog: 0xe8c8a8,
     sun: [0xffd3a0, 1.3], hemi: [0xe8d8d0, 0x7a4a38, 0.5], motes: 0xffe2b0,
   },
+  snow: {
+    name: '霜雪高原', icon: '❄️', desc: '积雪台地、雪松林与冰晶点缀的寒冷高原。',
+    pal: {
+      grassA: 0xc6d2e2, grassB: 0xb2c0d4, grassLight: 0xd8e2ee, grassDeep: 0x9eaec6,
+      dirt: 0x7a8396, dirtDark: 0x626b7e, sand: 0xc8d4e2, bed: 0x3a6c88, rim: 0x98a6bc,
+      top: 0xf0f5fb, topRim: 0xfdfeff, lip: 0xdfe7f1, earthLo: 0x40425a, earthHi: 0x7c7f9a,
+      rockTop: 0xc8d6e6, rockRim: 0xe2ecf6, rockLo: 0x4e5a70, rockHi: 0x8a9ab4,
+    },
+    decor: { tuft: [0x9a9a7a, 0x8a8a6a, 0xa8a488], shrub: [0xe6eef6, 0xd8e2ec, 0x6a8a6a], pebble: [0x8a909c, 0x7a808c, 0x9aa2ae], flower: [0x9fe4ff, 0xbfe8ff, 0xd0d8ff] },
+    sky: ['#5a6aa8', '#9fb2e0', '#dbe4f6', '#eef2fa'], fog: 0xd4ddef,
+    sun: [0xffeedd, 0.95], hemi: [0xc8d8f8, 0x5a6478, 0.5], motes: 0xffffff, snowfall: true,
+  },
 };
