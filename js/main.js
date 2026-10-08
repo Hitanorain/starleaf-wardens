@@ -110,10 +110,38 @@
     G.cam.target.set(b.cx, 0, b.cz); G.cam.dist = G.fitDist(); G.cam.goal = null;
     if (G.UI.ring) G.UI.setTool(null);
   };
+  // 地图缩略图：把每种地图用同一个种子生成一次，拍一张照片
+  G.makeThumbs = function (seed) {
+    const thumbs = {};
+    const keep = G.biome || 'forest';
+    for (const b of Object.keys(G.BIOMES)) {
+      G.newMap(seed, b);
+      const bd = Wd.bounds();
+      camera.clearViewOffset();
+      const dist = G.fitDist() * 0.78, pitch = 0.86, yaw = 0.55, cp = Math.cos(pitch);
+      camera.position.set(bd.cx + Math.sin(yaw) * dist * cp, dist * Math.sin(pitch), bd.cz + Math.cos(yaw) * dist * cp);
+      camera.lookAt(bd.cx, 0, bd.cz);
+      camera.updateMatrixWorld();
+      scene.fog.near = dist + 6; scene.fog.far = dist + 45;
+      Wd.updateDots(0, false);
+      composer.render();
+      const src = renderer.domElement, sw = src.width, sh = src.height;
+      if (!sw || !sh) continue;   // 窗口还没有尺寸（例如页面在后台），之后再补拍
+      const ch = sh * 0.82, cw = Math.min(sw, ch * 1.6);
+      const c = document.createElement('canvas'); c.width = 320; c.height = 200;
+      c.getContext('2d').drawImage(src, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, 320, 200);
+      thumbs[b] = c.toDataURL('image/jpeg', 0.85);
+    }
+    G.biome = keep;
+    G.UI.thumbs = thumbs;
+  };
+
   G.beginRun = function () {
     document.getElementById('screen-title').hidden = true;
+    document.body.classList.remove('on-title');
+    camera.clearViewOffset();
     S.phase = 'prep';
-    G.cam.yaw = 0; G.camFit();
+    G.cam.yaw = 0; G.cam.pitch = 0.98; G.camFit();
     G.startRun();
     G.UI.refresh();
     G.UI.banner('备战阶段', '用下方的地形块搭出高地、拉长敌人路线，再在高地上建塔。准备好后按 空格 开战');
@@ -121,6 +149,10 @@
   };
 
   window.addEventListener('resize', () => {
+    // 首次打开时窗口可能还没有尺寸，拿到尺寸后补拍地图缩略图
+    if (S.phase === 'title' && window.innerWidth > 0 && (!G.UI.thumbs || Object.keys(G.UI.thumbs).length < 2)) {
+      setTimeout(() => { if (S.phase !== 'title') return; try { G.makeThumbs(G.UI.seed); G.newMap(G.UI.seed); G.UI.drawBiomes(); } catch (e) { /* 忽略 */ } }, 50);
+    }
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);
     bloom.setSize(window.innerWidth, window.innerHeight);
@@ -129,9 +161,11 @@
   });
 
   G.UI.seed = Math.floor(Math.random() * 99999);
+  G.biome = 'forest';
+  try { G.makeThumbs(G.UI.seed); } catch (e) { console.warn('缩略图生成失败', e); }
   G.newMap(G.UI.seed, 'forest');
   G.UI.init();
-  document.getElementById('seed').textContent = G.UI.seed;
+  G.UI.drawBiomes();
 
   let last = performance.now(), time = 0;
   function loop(now) {
@@ -148,7 +182,14 @@
     G.UI.frame(dt);
 
     const c = G.cam;
-    if (S.phase === 'title') c.yaw = Math.sin(time * 0.15) * 0.35;
+    if (S.phase === 'title') {
+      // 标题画面：镜头缓慢环绕地图；地图整体右移，让出左侧面板的位置
+      c.yaw = 0.5 + time * 0.045;
+      c.pitch = 0.84;
+      c.dist = G.fitDist() * (window.innerWidth > 900 ? 0.9 : 1.1);
+      const shift = window.innerWidth > 900 ? 230 : 0;
+      camera.setViewOffset(window.innerWidth, window.innerHeight, -shift, 0, window.innerWidth, window.innerHeight);
+    }
     if (c.goal) {
       const k = Math.min(1, dt * 3);
       c.target.x += (c.goal.x - c.target.x) * k; c.target.z += (c.goal.z - c.target.z) * k;

@@ -22,16 +22,29 @@
     $('#btn-help').onclick = () => toggleHelp();
     $('#help').onclick = () => toggleHelp(false);
     $('#title-start').onclick = () => { A.unlock(); G.beginRun(UI.seed); };
-    $('#title-reroll').onclick = () => { UI.seed = Math.floor(Math.random() * 99999); G.newMap(UI.seed); $('#seed').textContent = UI.seed; };
-    const drawBiomes = () => {
-      $('#biomes').innerHTML = Object.entries(G.BIOMES).map(([k, b]) =>
-        `<button data-biome="${k}" class="${G.biome === k ? 'on' : ''}"><span class="bi">${b.icon}</span><b>${b.name}</b><small>${b.desc}</small></button>`).join('');
+    // 标题画面：地图卡（真实截图做缩略图）
+    UI.drawBiomes = () => {
+      $('#biomes').innerHTML = Object.entries(G.BIOMES).map(([k, b]) => {
+        const img = UI.thumbs && UI.thumbs[k] ? `style="background-image:url(${UI.thumbs[k]})"` : '';
+        return `<button data-biome="${k}" class="${G.biome === k ? 'on' : ''}"><div class="thumb" ${img}><span class="bi">${b.icon}</span><span class="ok">✓</span></div>
+          <div class="bt"><b>${b.name}</b><small>${b.desc}</small></div></button>`;
+      }).join('');
       $('#biomes').querySelectorAll('button').forEach(btn => btn.onclick = () => {
         if (G.biome === btn.dataset.biome) return;
-        G.newMap(UI.seed, btn.dataset.biome); drawBiomes();
+        G.newMap(UI.seed, btn.dataset.biome); UI.drawBiomes();
       });
+      $('#seed').textContent = UI.seed;
+      $('#pv-seed').textContent = UI.seed;
+      $('#pv-name').textContent = G.BIOMES[G.biome].name;
     };
-    drawBiomes();
+    $('#title-reroll').onclick = () => {
+      UI.seed = Math.floor(Math.random() * 99999);
+      G.makeThumbs(UI.seed);
+      G.newMap(UI.seed);
+      UI.drawBiomes();
+    };
+    $('#title-help').onclick = () => toggleHelp(true);
+    document.body.classList.add('on-title');
     $('#end-retry').onclick = () => { $('#screen-end').hidden = true; G.newMap(Wd.seed); G.beginRun(Wd.seed); };
     $('#end-new').onclick = () => { $('#screen-end').hidden = true; UI.seed = Math.floor(Math.random() * 99999); G.newMap(UI.seed); G.beginRun(UI.seed); };
     $('#title-luna').innerHTML = UI.ic('assets/portraits/luna.png', '🧚', 'big');
