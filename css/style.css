@@ -413,3 +413,11 @@ button.ghost small { color: var(--dim); }
   color: var(--text); background: rgba(26, 20, 52, 0.62); border: 1px solid rgba(255, 226, 150, 0.35); backdrop-filter: blur(6px); }
 .music-toggle:hover { background: rgba(26, 20, 52, 0.8); }
 .music-toggle.off, #btn-music.off { opacity: 0.5; text-decoration: line-through; }
+
+/* 返回标题确认框 */
+#confirm-home { position: absolute; inset: 0; z-index: 45; display: grid; place-items: center; background: rgba(20, 10, 40, 0.55); backdrop-filter: blur(3px); }
+#confirm-home[hidden] { display: none; }
+#confirm-home .cbox { width: min(380px, 92vw); padding: 24px 28px; text-align: center; border-radius: 18px;
+  background: var(--panel2); border: 1px solid var(--line); box-shadow: 0 20px 50px rgba(10, 0, 30, 0.5); animation: tin 0.2s; }
+#confirm-home h3 { margin: 0 0 6px; font-family: "ZCOOL XiaoWei", serif; font-weight: normal; font-size: 24px; color: var(--gold); }
+#confirm-home p { margin: 0 0 18px; color: var(--dim); font-size: 14px; }

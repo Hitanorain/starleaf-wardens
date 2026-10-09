@@ -22,7 +22,7 @@
 | `js/config.js` | **全部数据表**：`G.CFG` 常量、`G.TOWERS`、`G.ENEMIES`、`G.WAVES`、`G.HERO`、`G.BLESSINGS`、`G.PIECES`（地形块形状）、`G.REGIONS`（扩张区域）、`G.BIOMES`（地图配色/光照/装饰色） |
 | `js/models.js` | `G.M`：所有低多边形模型工厂（塔、敌人、仙子、古树、传送门、树木/仙人掌/雪人、陨石、曳光弹），以及材质工具 `M.mat` / `M.glow` / `M.lin` |
 | `js/audio.js` | `G.Audio`：WebAudio 程序合成音效，`A.play('name')` |
-| `js/music.js` | `G.Music`：背景音乐。优先播放 `assets/audio/bgm_title.mp3` / `bgm_game.mp3`，没有文件时实时合成（和弦铺底 + 琶音 + 铃音 + 混响）。`setMode('title'|'game')`、`toggle()`；首次点击/按键后才能开始（浏览器限制），静音状态存在 localStorage |
+| `js/music.js` | `G.Music`：背景音乐。小型步进音序器 + 合成乐器，曲目 `title / forest / desert / snow`（`SONGS`），强度 `setIntensity(0 备战 / 1 战斗 / 2 Boss)` 由波次开始/结束驱动；`setMode('title'|'game')` 在小节线上换曲。若存在 `assets/audio/bgm_<曲目>.mp3` 则改播文件。首次点击/按键后才开始；切后台自动暂停。`Mu._render(曲目, 强度, 秒)` 可离线渲染测音量 |
 | `js/fx.js` | `G.FX`：粒子池、闪光、柔边光环、光带拖尾、闪电、飘字 |
 | `js/terrain.js` | `G.Terrain`：地面高度图网格（含高地）、上色、水面、实例化装饰、外围森林、建造网格、扩张空位预览 |
 | `js/world.js` | `G.World`：地块数据、区域/开拓、传送门定位、寻路距离场、敌人路线光点、地块模型（树/岩石/水晶） |
@@ -111,6 +111,7 @@
 ## 10. 常见扩展怎么做
 
 - **新塔**：`G.TOWERS` 加数值 → `M.tower` 加三级造型 → `Tower.update` 的开火分支 → `Proj.LV` 加弹道外观 → `ART_REQUESTS.md` 加图标需求。
+- **新地图的配乐**：在 `music.js` 的 `SONGS` 加一首（`bpm / spb / beat / bars / play()`），`play()` 里按强度 `L` 叠加乐器层。
 - **新敌人**：`G.ENEMIES` + `M.enemy` 分支 + `G.WAVES` 里安排出场。
 - **新地图（生物群系）**：见第 4 节"生物群系"。
 - **新扩张区域**：`G.REGIONS` 加描述 + `Wd.makeRegion` 加布局生成 + （如有特殊效果）`act.expand` / `G.waveCleared` 里处理。

@@ -671,7 +671,9 @@
     const newPortal = Wd.portals.find(p => p.openWave === S.wave && S.wave > 1);
     if (newPortal) { A.play('portal'); G.UI.banner(`${newPortal.name}已开启！`, '敌人将从两个方向进攻'); }
     else G.UI.banner(`第 ${S.wave} 波`, groups.map(g => G.ENEMIES[g[0]].name + ' ×' + g[1]).join('　'));
-    if (groups.some(g => G.ENEMIES[g[0]].boss)) setTimeout(() => G.UI.toast('⚠ Boss 来袭！', 'warn'), 1500);
+    const boss = groups.some(g => G.ENEMIES[g[0]].boss);
+    if (boss) setTimeout(() => G.UI.toast('⚠ Boss 来袭！', 'warn'), 1500);
+    G.Music.setIntensity(boss ? 2 : 1);   // 配乐进入战斗版（Boss 波更激烈）
     G.UI.refresh();
   };
   G.updateWave = function (dt) {
@@ -692,6 +694,7 @@
     const drawn = G.drawPieces(CFG.DRAW_PER_WAVE);
     if (S.wave % CFG.EXPAND_EVERY === 0 && S.wave < G.WAVES.length) { S.expandTokens++; S.offers = null; }
     A.play('clear');
+    G.Music.setIntensity(0);
     for (const p of S.projectiles) p.remove();
     S.projectiles = [];
     if (S.wave >= G.WAVES.length) { G.endGame(true); return; }
@@ -721,6 +724,7 @@
   G.endGame = function (win) {
     if (S.phase === 'over' || S.phase === 'win') return;
     S.phase = win ? 'win' : 'over';
+    G.Music.setIntensity(0);
     A.play(win ? 'clear' : 'lose');
     G.UI.showEnd(win);
   };

@@ -150,6 +150,19 @@
     setTimeout(() => { if (S.wave === 0) G.UI.toast('提示：右键点击地图可以让露娜飞过去', ''); }, 4500);
   };
 
+  // 返回标题界面：重新生成当前地图的预览，显示标题画面，配乐切回标题曲
+  G.returnToTitle = function () {
+    for (const id of ['modal-bless', 'help', 'screen-end', 'region-panel']) document.getElementById(id).hidden = true;
+    document.getElementById('banner').classList.remove('show');
+    S.paused = false;
+    try { G.makeThumbs(G.UI.seed, [G.biome]); } catch (e) { /* 忽略 */ }
+    G.newMap(G.UI.seed);
+    document.getElementById('screen-title').hidden = false;
+    document.body.classList.add('on-title');
+    G.UI.drawBiomes();
+    G.UI.refresh();
+  };
+
   window.addEventListener('resize', () => {
     // 首次打开时窗口可能还没有尺寸，拿到尺寸后补拍地图缩略图
     if (S.phase === 'title' && window.innerWidth > 0 && (!G.UI.thumbs || Object.keys(G.UI.thumbs).length < 2)) {

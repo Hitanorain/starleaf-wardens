@@ -49,6 +49,13 @@
       UI.drawBiomes();
     };
     $('#title-help').onclick = () => toggleHelp(true);
+    // 返回标题：游戏中先确认（确认期间暂停），结算画面直接返回
+    let pausedBefore = false;
+    const closeConfirm = () => { $('#confirm-home').hidden = true; S.paused = pausedBefore; };
+    $('#btn-home').onclick = () => { pausedBefore = S.paused; S.paused = true; $('#confirm-home').hidden = false; };
+    $('#home-no').onclick = closeConfirm;
+    $('#home-yes').onclick = () => { $('#confirm-home').hidden = true; G.returnToTitle(); };
+    $('#end-home').onclick = () => { $('#screen-end').hidden = true; G.returnToTitle(); };
     // 背景音乐开关（标题画面和游戏内各一个，状态同步）
     UI.syncMusic = () => {
       const off = G.Music.muted;
