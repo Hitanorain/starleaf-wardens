@@ -101,29 +101,67 @@
     new THREE.MeshPhongMaterial({ color: C(c), vertexColors: true, flatShading: true, shininess: 6, specular: 0x050505 }));
 
   // ---------- 装饰件（实例化渲染） ----------
+  // parts: [几何, 位置, 缩放, 旋转?, 颜色?]。只要有一件带颜色，就为全部烘焙顶点色（用于"石头+积雪"这类双色小物件）
   const U = THREE.BufferGeometryUtils;
   function merged(parts) {
-    return U.mergeBufferGeometries(parts.map(([geo, p, s, r]) => {
-      const g = geo.clone();
+    const colored = parts.some(p => p[4] !== undefined);
+    return U.mergeBufferGeometries(parts.map(([geo, p, s, r, col]) => {
+      let g = geo.clone();
       const m = new THREE.Matrix4().compose(new THREE.Vector3(...p), new THREE.Quaternion().setFromEuler(new THREE.Euler(...(r || [0, 0, 0]))), new THREE.Vector3(...s));
       g.applyMatrix4(m);
-      return g.index ? g.toNonIndexed() : g;
+      if (g.index) g = g.toNonIndexed();
+      if (colored) {
+        const c = C(col === undefined ? 0xffffff : col), n = g.attributes.position.count, a = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; }
+        g.setAttribute('color', new THREE.BufferAttribute(a, 3));
+      }
+      return g;
     }));
   }
-  const DECOR = {
-    tuft: { geo: () => merged([[new THREE.ConeGeometry(1, 1, 3), [0, 0.07, 0], [0.025, 0.15, 0.025], [0.15, 0, 0.1]], [new THREE.ConeGeometry(1, 1, 3), [0.04, 0.06, 0.02], [0.022, 0.12, 0.022], [0, 0, -0.45]], [new THREE.ConeGeometry(1, 1, 3), [-0.035, 0.055, -0.01], [0.022, 0.11, 0.022], [0.2, 0, 0.5]], [new THREE.ConeGeometry(1, 1, 3), [0.0, 0.05, 0.04], [0.02, 0.1, 0.02], [0.5, 0, 0]]]),
-      colors: [0x6f9a44, 0x86a84e, 0x9cb85c, 0x5f8a3e], shadow: false, max: 3200 },
-    shrub: { geo: () => merged([[new THREE.IcosahedronGeometry(1, 0), [0, 0.06, 0], [0.09, 0.07, 0.09]], [new THREE.IcosahedronGeometry(1, 0), [0.07, 0.04, 0.03], [0.06, 0.05, 0.06]], [new THREE.IcosahedronGeometry(1, 0), [-0.05, 0.04, -0.04], [0.06, 0.05, 0.06]]]),
-      colors: [0x5e8a3f, 0x6f8f45, 0x7f9a4c, 0x9a6a4a, 0x8c6b4e], shadow: true, max: 1200 },
-    pebble: { geo: () => merged([[new THREE.DodecahedronGeometry(1, 0), [0, 0.02, 0], [0.06, 0.035, 0.05]], [new THREE.DodecahedronGeometry(1, 0), [0.07, 0.015, 0.03], [0.035, 0.025, 0.03]]]),
-      colors: [0x8f8a96, 0x847e74, 0x9e978a, 0x77727f], shadow: true, max: 1500 },
-    flower: { geo: () => G.biome === 'snow'
-      ? merged([[new THREE.OctahedronGeometry(1, 0), [0, 0.07, 0], [0.025, 0.08, 0.025], [0.2, 0, 0.1]], [new THREE.OctahedronGeometry(1, 0), [0.04, 0.05, 0.01], [0.018, 0.06, 0.018], [0, 0, -0.5]], [new THREE.OctahedronGeometry(1, 0), [-0.03, 0.045, -0.02], [0.016, 0.05, 0.016], [0.4, 0, 0.5]]])
-      : G.biome === 'desert'
-      ? merged([[new THREE.CylinderGeometry(1, 1, 1, 6), [0, 0.07, 0], [0.03, 0.14, 0.03]], [new THREE.SphereGeometry(1, 6, 4), [0, 0.14, 0], [0.03, 0.025, 0.03]], [new THREE.CylinderGeometry(1, 1, 1, 6), [0.045, 0.07, 0], [0.018, 0.06, 0.018]], [new THREE.SphereGeometry(1, 6, 4), [0.06, 0.11, 0], [0.022, 0.03, 0.022]]])
-      : merged([[new THREE.CylinderGeometry(1, 1, 1, 3), [0, 0.05, 0], [0.006, 0.1, 0.006]], [new THREE.IcosahedronGeometry(1, 0), [0, 0.11, 0], [0.03, 0.022, 0.03]], [new THREE.IcosahedronGeometry(1, 0), [0.05, 0.08, 0.02], [0.024, 0.018, 0.024]]]),
-      colors: [0xfff7ea, 0xffe37a, 0xffb3d6, 0xd2bfff], shadow: false, max: 1000 },
+  const cone3 = () => new THREE.ConeGeometry(1, 1, 3), cyl = (n = 5) => new THREE.CylinderGeometry(1, 1, 1, n);
+  const ico = (d = 0) => new THREE.IcosahedronGeometry(1, d), dode = () => new THREE.DodecahedronGeometry(1, 0), octa = () => new THREE.OctahedronGeometry(1, 0);
+  // 每张地图各自一套地面装饰：4 个槽位（tuft 最多、pebble 可以出现在路上、shrub、flower 少量点缀）
+  const DECOR_SETS = {
+    forest: {
+      tuft: { geo: () => merged([[cone3(), [0, 0.07, 0], [0.025, 0.15, 0.025], [0.15, 0, 0.1]], [cone3(), [0.04, 0.06, 0.02], [0.022, 0.12, 0.022], [0, 0, -0.45]], [cone3(), [-0.035, 0.055, -0.01], [0.022, 0.11, 0.022], [0.2, 0, 0.5]], [cone3(), [0, 0.05, 0.04], [0.02, 0.1, 0.02], [0.5, 0, 0]]]),
+        colors: [0x6f9a44, 0x86a84e, 0x9cb85c, 0x5f8a3e], shadow: false },
+      shrub: { geo: () => merged([[ico(), [0, 0.06, 0], [0.09, 0.07, 0.09]], [ico(), [0.07, 0.04, 0.03], [0.06, 0.05, 0.06]], [ico(), [-0.05, 0.04, -0.04], [0.06, 0.05, 0.06]]]),
+        colors: [0x5e8a3f, 0x6f8f45, 0x7f9a4c, 0x9a6a4a], shadow: true },
+      pebble: { geo: () => merged([[dode(), [0, 0.02, 0], [0.06, 0.035, 0.05]], [dode(), [0.07, 0.015, 0.03], [0.035, 0.025, 0.03]]]),
+        colors: [0x8f8a96, 0x847e74, 0x9e978a], shadow: true },
+      flower: { geo: () => merged([[cyl(3), [0, 0.05, 0], [0.006, 0.1, 0.006]], [ico(), [0, 0.11, 0], [0.03, 0.022, 0.03]], [ico(), [0.05, 0.08, 0.02], [0.024, 0.018, 0.024]]]),
+        colors: [0xfff7ea, 0xffe37a, 0xffb3d6, 0xd2bfff], shadow: false },
+    },
+    desert: {
+      // 枯枝杂丛：几根向外张开的干枯细枝
+      tuft: { geo: () => merged([[cyl(3), [0.02, 0.06, 0], [0.008, 0.13, 0.008], [0.2, 0, -0.5]], [cyl(3), [-0.025, 0.055, 0.01], [0.007, 0.12, 0.007], [-0.1, 0, 0.6]], [cyl(3), [0, 0.06, -0.025], [0.007, 0.12, 0.007], [-0.6, 0, 0]], [cyl(3), [0.005, 0.05, 0.03], [0.006, 0.1, 0.006], [0.55, 0, 0.1]], [cyl(3), [0.05, 0.1, 0], [0.005, 0.06, 0.005], [0, 0, -1.1]]]),
+        colors: [0x9a7a5a, 0x8a6a4a, 0xa88a62, 0x7a5e46], shadow: false },
+      // 鼠尾草丛：低矮的灰绿色团块
+      shrub: { geo: () => merged([[dode(), [0, 0.045, 0], [0.09, 0.05, 0.08]], [dode(), [0.07, 0.03, 0.04], [0.06, 0.035, 0.05]], [dode(), [-0.06, 0.03, -0.03], [0.055, 0.035, 0.05]]]),
+        colors: [0x8a9a78, 0x9aa486, 0x7e8c6c, 0xa8a07a], shadow: true },
+      // 红色砂岩碎块：扁平、带棱角
+      pebble: { geo: () => merged([[new THREE.BoxGeometry(1, 1, 1), [0, 0.02, 0], [0.09, 0.035, 0.06], [0, 0.4, 0.08]], [dode(), [0.07, 0.018, 0.04], [0.035, 0.025, 0.03]]]),
+        colors: [0xb8704e, 0xc4825a, 0xa86448, 0xd0966a], shadow: true },
+      // 小仙人掌
+      flower: { geo: () => merged([[cyl(6), [0, 0.07, 0], [0.03, 0.14, 0.03]], [new THREE.SphereGeometry(1, 6, 4), [0, 0.14, 0], [0.03, 0.025, 0.03]], [cyl(6), [0.045, 0.07, 0], [0.018, 0.06, 0.018]], [new THREE.SphereGeometry(1, 6, 4), [0.06, 0.11, 0], [0.022, 0.03, 0.022]]]),
+        colors: [0x5f9450, 0x6aa05a, 0x558a48], shadow: false },
+    },
+    snow: {
+      // 小雪堆：几团圆润的积雪
+      tuft: { geo: () => merged([[ico(1), [0, 0.015, 0], [0.11, 0.045, 0.09]], [ico(1), [0.08, 0.01, 0.03], [0.07, 0.03, 0.06]], [ico(1), [-0.06, 0.008, -0.04], [0.06, 0.025, 0.05]]]),
+        colors: [0xf4f8fc, 0xe8eef6, 0xdfe8f2], shadow: false },
+      // 被雪盖住的灌木：深绿枝叶只露出下半截
+      shrub: { geo: () => merged([[ico(), [0, 0.06, 0], [0.09, 0.07, 0.09], undefined, 0x2f5a46], [ico(), [0.07, 0.04, 0.03], [0.06, 0.05, 0.06], undefined, 0x3a6650], [ico(1), [0, 0.105, 0], [0.085, 0.04, 0.085], undefined, 0xffffff], [ico(1), [0.07, 0.075, 0.03], [0.055, 0.03, 0.055], undefined, 0xffffff]]),
+        colors: [0xffffff, 0xf0f4f8], shadow: true, vc: true },
+      // 顶上积雪的石头
+      pebble: { geo: () => merged([[dode(), [0, 0.025, 0], [0.065, 0.04, 0.055], undefined, 0x7a808c], [ico(1), [0, 0.058, 0], [0.058, 0.018, 0.048], undefined, 0xffffff], [dode(), [0.075, 0.016, 0.03], [0.035, 0.025, 0.03], undefined, 0x6e7480], [ico(1), [0.075, 0.036, 0.03], [0.03, 0.01, 0.026], undefined, 0xffffff]]),
+        colors: [0xffffff, 0xeef1f6, 0xe2e6ee], shadow: true, vc: true },
+      // 冰晶
+      flower: { geo: () => merged([[octa(), [0, 0.07, 0], [0.025, 0.08, 0.025], [0.2, 0, 0.1]], [octa(), [0.04, 0.05, 0.01], [0.018, 0.06, 0.018], [0, 0, -0.5]], [octa(), [-0.03, 0.045, -0.02], [0.016, 0.05, 0.016], [0.4, 0, 0.5]]]),
+        colors: [0x9fe4ff, 0xbfe8ff, 0xd0d8ff], shadow: false },
+    },
   };
+  const DECOR_MAX = { tuft: 3200, shrub: 1200, pebble: 1500, flower: 1000 };
   T.items = [];
 
   // ---------- 构建 ----------
@@ -533,9 +571,10 @@
   function buildDecor(grp, rng) {
     T.items = [];
     T.inst = {};
-    for (const k in DECOR) {
-      const d = DECOR[k];
-      const mesh = new THREE.InstancedMesh(d.geo(), new THREE.MeshLambertMaterial({ color: 0xffffff }), d.max);
+    const set = DECOR_SETS[G.biome] || DECOR_SETS.forest;
+    for (const k in set) {
+      const d = Object.assign({ max: DECOR_MAX[k] }, set[k]);
+      const mesh = new THREE.InstancedMesh(d.geo(), new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: !!d.vc }), d.max);
       mesh.castShadow = d.shadow; mesh.receiveShadow = true;
       grp.add(mesh);
       T.inst[k] = { mesh, d, n: 0 };
@@ -547,7 +586,7 @@
       const I = T.inst[type];
       if (I.n >= I.d.max) return;
       const idx = I.n++;
-      const cols = G.BIOMES[G.biome].decor[type] || I.d.colors;
+      const cols = I.d.colors;
       I.mesh.setColorAt(idx, C(cols[Math.floor(rng() * cols.length)]).multiplyScalar(0.85 + rng() * 0.3));
       T.items.push({ type, idx, x, z, tile, layer, onPath, rot: rng() * Math.PI * 2, s: 0.7 + rng() * 0.7 });
     };

@@ -49,6 +49,16 @@
       UI.drawBiomes();
     };
     $('#title-help').onclick = () => toggleHelp(true);
+    // 背景音乐开关（标题画面和游戏内各一个，状态同步）
+    UI.syncMusic = () => {
+      const off = G.Music.muted;
+      $('#title-music').classList.toggle('off', off);
+      $('#title-music span').textContent = off ? '音乐：关' : '音乐：开';
+      $('#btn-music').classList.toggle('off', off);
+    };
+    $('#title-music').onclick = () => { G.Music.toggle(); UI.syncMusic(); };
+    $('#btn-music').onclick = () => { G.Music.toggle(); UI.syncMusic(); };
+    UI.syncMusic();
     document.body.classList.add('on-title');
     $('#end-retry').onclick = () => { $('#screen-end').hidden = true; G.newMap(Wd.seed); G.beginRun(Wd.seed); };
     $('#end-new').onclick = () => { $('#screen-end').hidden = true; UI.seed = Math.floor(Math.random() * 99999); G.newMap(UI.seed); G.beginRun(UI.seed); };

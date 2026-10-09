@@ -199,10 +199,16 @@
     return g;
   };
 
+  // 岩石高地上的碎石：沙漠是红砂岩，雪地顶上积雪
   M.rock = function (rng) {
     const g = new THREE.Group();
-    part(g, GEO.dodec, M.mat(0x8f88a3), [0, 0.12, 0], [0.22, 0.16, 0.2], [rng(), rng(), rng()]);
-    part(g, GEO.dodec, M.mat(0x7d7792), [0.15, 0.08, 0.1], [0.12, 0.1, 0.12], [rng(), rng(), rng()]);
+    const cols = G.biome === 'desert' ? [0xb8704e, 0xa05e42] : G.biome === 'snow' ? [0x7a808c, 0x6a707c] : [0x8f88a3, 0x7d7792];
+    part(g, GEO.dodec, M.mat(cols[0]), [0, 0.12, 0], [0.22, 0.16, 0.2], [rng(), rng(), rng()]);
+    part(g, GEO.dodec, M.mat(cols[1]), [0.15, 0.08, 0.1], [0.12, 0.1, 0.12], [rng(), rng(), rng()]);
+    if (G.biome === 'snow') {
+      part(g, GEO.sphere, M.mat(0xf6f9fc), [0, 0.25, 0], [0.19, 0.06, 0.17]);
+      part(g, GEO.sphere, M.mat(0xf6f9fc), [0.15, 0.17, 0.1], [0.1, 0.035, 0.1]);
+    }
     return g;
   };
 

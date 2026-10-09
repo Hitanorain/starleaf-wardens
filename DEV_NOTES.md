@@ -22,6 +22,7 @@
 | `js/config.js` | **全部数据表**：`G.CFG` 常量、`G.TOWERS`、`G.ENEMIES`、`G.WAVES`、`G.HERO`、`G.BLESSINGS`、`G.PIECES`（地形块形状）、`G.REGIONS`（扩张区域）、`G.BIOMES`（地图配色/光照/装饰色） |
 | `js/models.js` | `G.M`：所有低多边形模型工厂（塔、敌人、仙子、古树、传送门、树木/仙人掌/雪人、陨石、曳光弹），以及材质工具 `M.mat` / `M.glow` / `M.lin` |
 | `js/audio.js` | `G.Audio`：WebAudio 程序合成音效，`A.play('name')` |
+| `js/music.js` | `G.Music`：背景音乐。优先播放 `assets/audio/bgm_title.mp3` / `bgm_game.mp3`，没有文件时实时合成（和弦铺底 + 琶音 + 铃音 + 混响）。`setMode('title'|'game')`、`toggle()`；首次点击/按键后才能开始（浏览器限制），静音状态存在 localStorage |
 | `js/fx.js` | `G.FX`：粒子池、闪光、柔边光环、光带拖尾、闪电、飘字 |
 | `js/terrain.js` | `G.Terrain`：地面高度图网格（含高地）、上色、水面、实例化装饰、外围森林、建造网格、扩张空位预览 |
 | `js/world.js` | `G.World`：地块数据、区域/开拓、传送门定位、寻路距离场、敌人路线光点、地块模型（树/岩石/水晶） |
@@ -64,9 +65,11 @@
   - 每个顶点不随地形变的数据（草色噪声、扰动）在 `buildGround` 里缓存一次。
   - 鼠标拾取**不对网格做射线检测**：`ui.js` 的 `pick()` 从最高层往下逐层与水平面求交（+ 塔模型射线检测）。
 - **外围**：一张 120×100 的大地面（中间挖洞被精细地面盖住）+ 实例化森林 + 装饰土丘（只有外围土丘还在用 `chunkGeo` 挤出几何体）。
-- **装饰**（草丛、石子、花/仙人掌/冰晶）都是 `InstancedMesh`，可见性由 `T.updateDecor()` 按地块状态刷新。
+- **装饰**都是 `InstancedMesh`，可见性由 `T.updateDecor()` 按地块状态刷新。每张地图一套独立装饰（`terrain.js` 的 `DECOR_SETS[biome]`，4 个槽位 tuft/shrub/pebble/flower），**新增地图时必须给它配一套**，否则会出现别的地图的植物。`merged()` 的部件可带第 5 个参数颜色，用来烘焙"石头+积雪"这类双色顶点色（实例材质需 `vc: true`）。
 - **生物群系**：`G.applyBiome(b)` 切换天空、雾、灯光并调用 `T.setBiome(b)` 换配色。新增地图主要是在 `G.BIOMES` 加一项 + `models.js` 的 `M.tree` 分支 + `terrain.js` 里装饰/外围森林的分支。
 - **光点/飘雪**：`world.js` 的 `Wd.fireflies`；`snowfall: true` 的地图改为下落的雪花。
+
+- **网页图标**：`assets/favicon.svg`（主图标）+ `assets/favicon-32.png`（不支持 SVG 图标的浏览器用）。
 
 ## 5. 特效工具（`fx.js`）
 - `FX.emit(pos, count, color, speed, life, up, gravity, spread, boost)`：粒子（加色混合，靠颜色衰减淡出）。

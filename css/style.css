@@ -407,3 +407,9 @@ button.ghost small { color: var(--dim); }
   .tcontent .howto { display: none; }
   .biomes .bt small { display: none; }
 }
+
+/* 音乐开关 */
+.music-toggle { position: absolute; top: 16px; right: 18px; z-index: 2; pointer-events: auto; padding: 8px 14px; border-radius: 999px; font-size: 13px;
+  color: var(--text); background: rgba(26, 20, 52, 0.62); border: 1px solid rgba(255, 226, 150, 0.35); backdrop-filter: blur(6px); }
+.music-toggle:hover { background: rgba(26, 20, 52, 0.8); }
+.music-toggle.off, #btn-music.off { opacity: 0.5; text-decoration: line-through; }

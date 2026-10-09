@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="70%">
+      <stop offset="0" stop-color="#7a5ad0"/>
+      <stop offset="0.6" stop-color="#3a2878"/>
+      <stop offset="1" stop-color="#1c1236"/>
+    </radialGradient>
+    <linearGradient id="moon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff6c8"/>
+      <stop offset="1" stop-color="#f0b040"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#1f8a5a"/>
+      <stop offset="0.55" stop-color="#4fd08a"/>
+      <stop offset="1" stop-color="#bfffd8"/>
+    </linearGradient>
+    <mask id="crescent">
+      <rect width="64" height="64" fill="#fff"/>
+      <circle cx="37" cy="24" r="14.5" fill="#000"/>
+    </mask>
+  </defs>
+  <!-- 徽章底：深紫夜空 + 金边 -->
+  <circle cx="32" cy="32" r="29.5" fill="url(#bg)" stroke="#f2c85b" stroke-width="3"/>
+  <!-- 新月 -->
+  <circle cx="28" cy="30" r="17" fill="url(#moon)" mask="url(#crescent)"/>
+  <!-- 星叶 -->
+  <path d="M17 50 C 19 35, 31 24, 50 21 C 48 38, 36 48, 17 50 Z" fill="url(#leaf)" stroke="#0e4a32" stroke-width="1"/>
+  <path d="M18.5 48.5 L 47 23.5" stroke="#eafff2" stroke-width="1.6" stroke-linecap="round" opacity="0.85"/>
+  <!-- 星光 -->
+  <path d="M48 7 L50 13 L56 15 L50 17 L48 23 L46 17 L40 15 L46 13 Z" fill="#ffffff"/>
+  <circle cx="48" cy="15" r="1.6" fill="#fff6c8"/>
+</svg>

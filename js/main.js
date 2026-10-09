@@ -106,6 +106,7 @@
     G.FX.clearTexts();
     G.Hero.init();
     S.phase = 'title';
+    G.Music.setMode('title');
     const b = Wd.bounds();
     G.cam.target.set(b.cx, 0, b.cz); G.cam.dist = G.fitDist(); G.cam.goal = null;
     if (G.UI.ring) G.UI.setTool(null);
@@ -140,6 +141,7 @@
     document.getElementById('screen-title').hidden = true;
     document.body.classList.remove('on-title');
     camera.clearViewOffset();
+    G.Music.setMode('game');
     S.phase = 'prep';
     G.cam.yaw = 0; G.cam.pitch = 0.98; G.camFit();
     G.startRun();
