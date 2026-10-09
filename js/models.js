@@ -224,47 +224,240 @@
     return g;
   };
 
-  // 月光古树（玩家要守护的核心）：弯曲的树干、长短不一的枝杈、偏向一侧的光团树冠
+  // 月光古树（玩家要守护的核心）——晶叶灵树：
+  // 双股缠绕上升的珍珠白树干（带发光纹路）、弯曲的枝杈与根、由菱形水晶组成的树冠（一部分绕树缓缓环绕），
+  // 树顶悬浮月牙与光环。比普通模型面数高、用平滑着色；水晶数量同时充当生命提示（掉血时逐片熄灭）
+  const taperTube = function (pts, segs, radial, r0, r1, ease = 1) {   // 沿曲线、半径从 r0 渐变到 r1 的管子
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const fr = curve.computeFrenetFrames(segs, false);
+    const pos = [], idx = [];
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs, P = curve.getPointAt(t), N = fr.normals[i], B = fr.binormals[i];
+      const r = r0 + (r1 - r0) * Math.pow(t, ease);
+      for (let j = 0; j <= radial; j++) {
+        const a = j / radial * Math.PI * 2, c = Math.cos(a) * r, s = Math.sin(a) * r;
+        pos.push(P.x + N.x * c + B.x * s, P.y + N.y * c + B.y * s, P.z + N.z * c + B.z * s);
+      }
+    }
+    for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) {
+      const a = i * (radial + 1) + j, b = a + radial + 1;
+      idx.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    return geo;
+  };
+  M.taperTube = taperTube;
+  // 月牙：外圆减去偏移的内圆，挤出成薄片
+  const crescentGeo = (() => {
+    const R = 0.2, d = 0.09, r2 = 0.17;
+    const x = (R * R - r2 * r2 + d * d) / (2 * d), y = Math.sqrt(R * R - x * x);
+    const a = Math.atan2(y, x), b = Math.atan2(y, x - d);
+    const sh = new THREE.Shape();
+    sh.moveTo(x, y);
+    sh.absarc(0, 0, R, a, Math.PI * 2 - a, false);
+    sh.absarc(d, 0, r2, Math.PI * 2 - b, b, true);
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.03, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2, curveSegments: 24 });
+    geo.center();
+    return geo;
+  })();
+
   M.heart = function () {
     const g = new THREE.Group();
-    const bark = M.mat(0xe2dcef), bark2 = M.mat(0xc9c0dc);
-    // 根系
-    [[0.3, 0.2, 0.9], [-0.25, 0.28, 1.6], [0.05, -0.32, 2.6], [-0.18, -0.22, 3.8], [0.33, -0.12, 5.2]].forEach(([x, z, a]) => {
-      part(g, GEO.cone5, bark2, [x * 0.7, 0.06, z * 0.7], [0.07, 0.42, 0.06], [Math.cos(a) * 1.25, a, Math.sin(a) * 1.25]);
+    const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const bark = M.mat(0xf0eaf6, { flatShading: false, shininess: 40, specular: 0x302838 });
+    const barkDim = M.mat(0xd6cfe4, { flatShading: false, shininess: 20, specular: 0x181420 });
+    const vein = M.glow(0x9ff4ff, 1, false, 1.45);
+    const mesh = (geo, mat, shadow = true) => { const m = new THREE.Mesh(geo, mat); m.castShadow = shadow; m.receiveShadow = true; g.add(m); return m; };
+    const TOP = 1.32;   // 树干分叉的高度
+
+    // ---- 双股缠绕的树干 ----
+    // 两股以中轴为圆心、相位相差 180° 螺旋上升；中轴本身带一点 S 形弯曲；底部向外张开
+    const axis = t => V3(0.07 * Math.sin(t * Math.PI * 1.2), t * TOP, 0.05 * Math.sin(t * Math.PI * 0.8));
+    const spread = t => 0.06 + 0.07 * Math.pow(1 - t, 6) + 0.05 * Math.pow(t, 4);
+    const strand = (ph, t, extra = 0) => {
+      const c = axis(t), th = ph + t * Math.PI * 2.4, r = spread(t) + extra;
+      return V3(c.x + Math.cos(th) * r, c.y, c.z + Math.sin(th) * r);
+    };
+    const strandTips = [];
+    [0, Math.PI].forEach((ph, s) => {
+      const pts = [];
+      for (let i = 0; i <= 14; i++) pts.push(strand(ph, i / 14));
+      mesh(taperTube(pts, 48, 10, 0.11, 0.05, 0.8), s ? barkDim : bark);
+      // 沿着树干表面盘绕的发光纹路
+      const vp = [];
+      for (let i = 0; i <= 20; i++) {
+        const t = i / 20, p = strand(ph, t), c = axis(t), th = ph + t * Math.PI * 2.4 + 0.9;
+        const r = (0.11 + (0.05 - 0.11) * Math.pow(t, 0.8)) * 0.96;
+        vp.push(V3(p.x + Math.cos(th) * r, p.y + 0.01, p.z + Math.sin(th) * r));
+      }
+      mesh(taperTube(vp, 60, 4, 0.009, 0.006), vein, false);
+      strandTips.push({ p: strand(ph, 1), ph });
     });
-    // 弯曲的主干：一节节错开叠上去
-    const segs = [[0, 0.18, 0, 0.17], [0.03, 0.45, 0.02, 0.14], [0.08, 0.7, 0.01, 0.12], [0.15, 0.93, -0.03, 0.1], [0.19, 1.13, -0.06, 0.085]];
-    segs.forEach(([x, y, z, r], i) => part(g, GEO.cyl6, i % 2 ? bark : bark2, [x, y, z], [r, 0.32, r * 0.9], [0.1 * i, i, -0.12 - i * 0.04]));
-    // 枝杈（长短、角度都不一样）
-    [[0.2, 1.1, -0.05, 0.45, -1.0, 0.3], [0.08, 0.95, 0.04, 0.32, 0.9, -0.4], [0.16, 1.2, 0, 0.28, 0.2, 0.9], [0.05, 0.8, -0.02, 0.22, -0.4, -1.1]].forEach(([x, y, z, len, rz, rx]) => {
-      part(g, GEO.cyl6, bark, [x + Math.sin(-rz) * len * 0.5, y + len * 0.4, z + Math.sin(rx) * len * 0.4], [0.035, len, 0.035], [rx, 0, rz]);
-    });
-    // 树冠：大小错落、偏向一侧的光团
-    const cols = [0x7fd0e4, 0xb4a4ee, 0xd4e4f6, 0x68c0dc, 0xc6aef0];
+
+    // ---- 根：从树干底部弯曲着伸进地面 ----
+    for (let i = 0; i < 7; i++) {
+      const a = i / 7 * Math.PI * 2 + 0.3 + Math.sin(i * 3.1) * 0.25, L = 0.42 + (i % 3) * 0.12;
+      const d = V3(Math.cos(a), 0, Math.sin(a));
+      const pts = [V3(d.x * 0.05, 0.22, d.z * 0.05), V3(d.x * 0.14, 0.1, d.z * 0.14), V3(d.x * L * 0.6, 0.03, d.z * L * 0.6), V3(d.x * L, -0.03, d.z * L)];
+      mesh(taperTube(pts, 16, 7, 0.06, 0.008, 0.7), i % 2 ? bark : barkDim);
+    }
+
+    // ---- 枝杈：从树干顶端向四周弯曲伸出，末端挂水晶 ----
+    const tips = [];   // 枝头 / 小枝末端：[位置, 方向]
+    const limbs = [];  // 枝条曲线，用来沿枝撒小叶
+    const NB = 7;
+    for (let i = 0; i < NB; i++) {
+      const a = i / NB * Math.PI * 2 + Math.sin(i * 2.3) * 0.3;
+      const from = strandTips[i % 2].p.clone().lerp(axis(1), 0.4);
+      from.y -= (i % 3) * 0.06;
+      const d = V3(Math.cos(a), 0, Math.sin(a)), L = 0.55 + ((i * 37) % 5) * 0.06, up = 0.42 + (i % 2) * 0.12;
+      const p1 = from.clone().addScaledVector(d, L * 0.3).add(V3(0, up * L * 0.55, 0));
+      const p2 = from.clone().addScaledVector(d, L * 0.7).add(V3(0, up * L * 0.85, 0));
+      const end = from.clone().addScaledVector(d, L).add(V3(0, up * L * 0.8, 0));
+      mesh(taperTube([from, p1, p2, end], 20, 7, 0.042, 0.009, 0.9), i % 2 ? bark : barkDim);
+      limbs.push(new THREE.CatmullRomCurve3([from, p1, p2, end]));
+      tips.push([end, end.clone().sub(p2).normalize()]);
+      // 小枝
+      const tw = p1.clone().lerp(p2, 0.5), td = d.clone().applyAxisAngle(V3(0, 1, 0), i % 2 ? 0.8 : -0.8);
+      const twEnd = tw.clone().addScaledVector(td, 0.22).add(V3(0, 0.14, 0));
+      const twMid = tw.clone().addScaledVector(td, 0.1).add(V3(0, 0.08, 0));
+      mesh(taperTube([tw, twMid, twEnd], 10, 5, 0.018, 0.005), bark);
+      limbs.push(new THREE.CatmullRomCurve3([tw, twMid, twEnd]));
+      tips.push([twEnd, twEnd.clone().sub(tw).normalize()]);
+    }
+    // 中央向上的主枝，托着月牙
+    const crown = axis(1);
+    mesh(taperTube([crown, crown.clone().add(V3(0.02, 0.25, 0)), crown.clone().add(V3(-0.02, 0.55, 0.01))], 14, 7, 0.04, 0.01), bark);
+
+    // ---- 水晶 ----
+    const CRY = [0x6fdcff, 0xa98bff, 0xff9fd8, 0x9ff0ff, 0x7fb0ff, 0xd6a8ff];
     const leaves = [];
-    [[0.25, 1.42, -0.05, 0.36], [-0.12, 1.3, 0.1, 0.28], [0.52, 1.25, 0.12, 0.24], [0.1, 1.62, -0.15, 0.26], [-0.25, 1.15, -0.18, 0.2],
-     [0.45, 1.55, -0.2, 0.2], [0.02, 1.45, 0.3, 0.22], [0.62, 1.4, -0.08, 0.15], [-0.05, 1.08, 0.28, 0.16]].forEach(([x, y, z, r], i) => {
-      const c = cols[i % cols.length];
-      leaves.push(part(g, GEO.ico0, M.mat(c, { emissive: c, emissiveIntensity: 0.05 }), [x, y, z], [r, r * 0.85, r], [i, i * 2.1, i * 0.7]));
+    const crystalAt = (parent, pos, dir, size, k) => {
+      const col = CRY[k % CRY.length];
+      // 半透明的切面外壳 + 内部发光的晶核（亮度 > 1，会泛光）
+      const mat = M.mat(col, { emissive: col, emissiveIntensity: 0.4, transparent: true, opacity: 0.6, shininess: 120, specular: 0xffffff, depthWrite: false });
+      const m = new THREE.Mesh(GEO.oct, mat);
+      const coreMat = M.glow(col, 0.999, false, 2.3);
+      const core = new THREE.Mesh(GEO.oct, coreMat);
+      core.scale.setScalar(0.55); core.castShadow = false;
+      m.add(core);
+      m.position.copy(pos);
+      m.quaternion.setFromUnitVectors(V3(0, 1, 0), dir.clone().normalize());
+      m.rotateY(k * 0.7);
+      m.scale.set(size * 0.42, size, size * 0.42);
+      m.castShadow = true;
+      parent.add(m);
+      leaves.push({ m, mat, coreMat, col, on: 1 });
+      return m;
+    };
+    // 枝头上的水晶（固定）
+    tips.forEach(([p, d], i) => crystalAt(g, p.clone().addScaledVector(d, 0.09), d, 0.17 + (i % 3) * 0.04, i));
+    // 每个枝头旁再长一颗偏向一侧的小水晶，让树冠更饱满
+    tips.forEach(([p, d], i) => {
+      const side = V3(-d.z, 0.4, d.x).normalize().multiplyScalar(i % 2 ? 1 : -1);
+      const d2 = d.clone().add(side.multiplyScalar(0.9)).normalize();
+      crystalAt(g, p.clone().addScaledVector(d2, 0.07), d2, 0.11 + (i % 2) * 0.03, i + 3);
     });
-    // 垂挂的小光果
-    const fruits = [];
-    [[0.55, 1.05, 0.15], [-0.2, 0.95, -0.15], [0.3, 1.12, 0.25], [0.7, 1.18, -0.1], [-0.08, 1.0, 0.32]].forEach(([x, y, z], i) => {
-      part(g, GEO.cyl6, M.mat(0xe8e0f4), [x, y + 0.08, z], [0.005, 0.16, 0.005]).castShadow = false;
-      fruits.push(part(g, GEO.sphere, M.glow(i % 2 ? 0x9ff4ff : 0xe6d6ff, 1, false, 1.25), [x, y, z], 0.035));
+
+    // ---- 细碎的发光小叶 + 樱粉花簇（一个 InstancedMesh，几百片也很便宜）----
+    // 沿每根枝条的后半段、以及树冠中心撒开，填满水晶之间的空隙
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const leafGeo = new THREE.OctahedronGeometry(1, 0);
+    leafGeo.scale(0.5, 0.12, 1);   // 扁平的菱形叶片
+    const LEAF_COL = [0x9fe8ff, 0xc2b0ff, 0xb8f4ff, 0xffb3e0, 0xffc8ea, 0xd8c8ff];
+    const spots = [];
+    for (const c of limbs) {
+      const n = Math.round(c.getLength() * 34);
+      for (let k = 0; k < n; k++) {
+        const p = c.getPointAt(0.3 + 0.7 * rnd());
+        spots.push(p.add(V3((rnd() - 0.5) * 0.26, (rnd() - 0.3) * 0.2, (rnd() - 0.5) * 0.26)));
+      }
+    }
+    for (let k = 0; k < 70; k++) {   // 树冠中心
+      const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 0.5;
+      spots.push(V3(crown.x + Math.cos(a) * r, 1.45 + rnd() * 0.5, crown.z + Math.sin(a) * r));
+    }
+    const leafMesh = new THREE.InstancedMesh(leafGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.88, side: THREE.DoubleSide, fog: false }), spots.length);
+    const dm = new THREE.Object3D(), lc = new THREE.Color();
+    spots.forEach((p, k) => {
+      dm.position.copy(p);
+      dm.rotation.set(rnd() * Math.PI, rnd() * Math.PI * 2, rnd() * Math.PI);
+      const pink = rnd() < 0.28;
+      dm.scale.setScalar((pink ? 0.035 : 0.05) + rnd() * 0.035);
+      dm.updateMatrix();
+      leafMesh.setMatrixAt(k, dm.matrix);
+      leafMesh.setColorAt(k, lc.copy(M.lin(pink ? LEAF_COL[3 + (k % 3)] : LEAF_COL[k % 3], 1.15 + rnd() * 0.35)));
     });
-    // 偏离中心悬浮的月晶 + 光环
-    const crystal = part(g, GEO.oct, M.glow(0xbff6ff, 1, false, 1.35), [0.35, 2.0, -0.08], [0.1, 0.19, 0.1]);
-    const halo = part(g, new THREE.TorusGeometry(0.22, 0.01, 4, 24), M.glow(0xbff6ff, 0.6, true, 1.0), [0.35, 2.0, -0.08], 1, [Math.PI / 2, 0, 0]);
-    halo.castShadow = false;
-    // 柔和的光晕（会呼吸）
+    leafMesh.castShadow = true;
+    g.add(leafMesh);
+    // 绕树环绕的水晶：两层，方向相反；尖端朝外上方
+    const orbitA = new THREE.Group(), orbitB = new THREE.Group();
+    orbitA.position.set(crown.x, 0, crown.z); orbitB.position.set(crown.x, 0, crown.z);
+    g.add(orbitA, orbitB);
+    const ring = (grp, n, r, y, tilt, size, k0) => {
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2 + k0;
+        const p = V3(Math.cos(a) * r, y + Math.sin(i * 2.7) * 0.08, Math.sin(a) * r);
+        const m = crystalAt(grp, p, V3(Math.cos(a) * tilt, 1, Math.sin(a) * tilt), size * (0.8 + (i % 3) * 0.15), k0 * 10 + i);
+        m.userData.y0 = m.position.y; m.userData.ph = i * 1.7 + k0;
+      }
+    };
+    ring(orbitA, 10, 0.88, 1.62, 0.9, 0.22, 0.2);
+    ring(orbitA, 7, 0.98, 1.3, 1.8, 0.15, 0.5);
+    ring(orbitB, 7, 0.6, 2.0, 0.6, 0.2, 1.1);
+    ring(orbitB, 4, 0.28, 2.24, 0.3, 0.15, 2.3);
+
+    // ---- 树顶：悬浮的月牙 + 小菱晶 + 光环 ----
+    const moon = new THREE.Group();
+    moon.position.set(crown.x - 0.02, 2.5, crown.z);
+    g.add(moon);
+    const moonMesh = new THREE.Mesh(crescentGeo, M.glow(0xfff3d6, 1, false, 1.7));
+    moonMesh.rotation.z = 0.5;
+    moon.add(moonMesh);
+    const crystal = new THREE.Mesh(GEO.oct, M.glow(0xc8f6ff, 1, false, 1.6));
+    crystal.position.set(0, -0.3, 0); crystal.scale.set(0.045, 0.1, 0.045);
+    moon.add(crystal);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.006, 6, 64), M.glow(0xfff0c8, 0.85, true, 1.3));
+    halo.rotation.x = Math.PI / 2 - 0.25;
+    moon.add(halo);
+    // 环绕树冠的大光环
+    const crownRing = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.005, 6, 96), M.glow(0xd8f0ff, 0.6, true, 1.2));
+    crownRing.position.set(crown.x, 1.85, crown.z); crownRing.rotation.set(Math.PI / 2 - 0.18, 0.1, 0);
+    g.add(crownRing);
+
+    // ---- 树下：发光符文石与小花 ----
+    for (let i = 0; i < 3; i++) {
+      const a = i / 3 * Math.PI * 2 + 0.6, x = Math.cos(a) * 0.5, z = Math.sin(a) * 0.5;
+      const st = part(g, GEO.taper4, M.mat(0x8c88aa), [x, 0.1, z], [0.06, 0.22, 0.06], [0, a, 0]);
+      st.castShadow = true;
+      part(g, GEO.oct, M.glow(0x9ff4ff, 1, false, 1.5), [x * 1.12, 0.14, z * 1.12], [0.018, 0.04, 0.018], [0, a, 0]).castShadow = false;
+    }
+    const petalMats = [M.glow(0xffc2ea, 1, false, 1.05), M.glow(0xd8c8ff, 1, false, 1.05)];
+    for (let i = 0; i < 9; i++) {
+      const a = i * 2.39 + 0.4, r = 0.3 + (i % 4) * 0.09, x = Math.cos(a) * r, z = Math.sin(a) * r;
+      for (let k = 0; k < 5; k++) {
+        const pa = k / 5 * Math.PI * 2;
+        part(g, GEO.sphere, petalMats[i % 2], [x + Math.cos(pa) * 0.025, 0.03, z + Math.sin(pa) * 0.025], [0.022, 0.008, 0.022]).castShadow = false;
+      }
+      part(g, GEO.sphere, M.glow(0xfff2b0, 1, false, 1.3), [x, 0.035, z], 0.012).castShadow = false;
+    }
+    // 枝间点缀的樱粉小花簇
+    tips.filter((_, i) => i % 3 === 1).forEach(([p], i) => {
+      for (let k = 0; k < 3; k++) part(g, GEO.ico0, petalMats[0], [p.x + Math.sin(k * 2.1 + i) * 0.05, p.y - 0.08 + k * 0.02, p.z + Math.cos(k * 2.1 + i) * 0.05], 0.025).castShadow = false;
+    });
+
+    // 柔和的光晕（会呼吸）+ 一盏点光
     const glowSp = new THREE.Sprite(new THREE.SpriteMaterial({ map: G.dotTex, color: M.lin(0xbfe8ff, 0.3), transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false }));
-    glowSp.position.set(0.2, 1.4, 0); glowSp.scale.setScalar(2.2);
+    glowSp.position.set(crown.x, 1.75, crown.z); glowSp.scale.setScalar(2.6);
     g.add(glowSp);
     const light = new THREE.PointLight(0x9ff4ff, 0.6, 4.5, 2);
-    light.position.set(0.2, 1.5, 0);
+    light.position.set(crown.x, 1.6, crown.z);
     g.add(light);
-    return { group: g, crystal, halo, leaves, fruits, glow: glowSp, light };
+    return { group: g, crystal, halo, moon, crownRing, orbitA, orbitB, leaves, leafMesh, glow: glowSp, light };
   };
 
   // 腐化传送门

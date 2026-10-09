@@ -62,7 +62,19 @@
     for (let i = FX.list.length - 1; i >= 0; i--) if (!FX.list[i](dt)) FX.list.splice(i, 1);
     FX.updateParticles(dt);
   };
+  // 换地图时清空特效。不能直接丢掉回调——那样光环 / 闪光等网格会永远留在场景里。
+  // 做法是把所有进行中的特效"快进"到结束（dt 给很大），让它们自己把网格移除；
+  // 快进中新加的特效（如陨石落地的光环）再快进几轮。期间静音，并抵消镜头震动
   FX.clear = function () {
+    const muted = G.Audio.muted;
+    G.Audio.muted = true;
+    for (let pass = 0; pass < 6 && FX.list.length; pass++) {
+      const list = FX.list.slice();
+      FX.list.length = 0;
+      for (const f of list) { try { if (f(999)) FX.list.push(f); } catch (e) { /* 忽略 */ } }
+    }
+    G.Audio.muted = muted;
+    if (G.cam) G.cam.shake = 0;
     FX.list.length = 0;
     for (let i = 0; i < N; i++) { life[i] = 0; pos[i * 3 + 1] = -50; }
   };

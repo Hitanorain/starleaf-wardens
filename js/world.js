@@ -450,25 +450,52 @@
     }
     fp.needsUpdate = true;
     const h = Wd.heartObj;
-    h.crystal.rotation.y += dt * 1.2;
-    h.crystal.position.y = 2.0 + Math.sin(time * 2) * 0.06;
-    h.halo.rotation.z += dt * 0.6;
-    h.halo.position.y = h.crystal.position.y;
+    // 月牙悬浮并始终朝向镜头；树冠水晶两层反向环绕、各自上下浮动
+    h.moon.position.y = 2.5 + Math.sin(time * 1.3) * 0.05;
+    h.moon.lookAt(G.camera.position);   // 从俯视镜头也能看到完整的月牙
+    h.crystal.rotation.y += dt * 1.5;
+    h.halo.rotation.z += dt * 0.8;
+    h.crownRing.rotation.z += dt * 0.25;
+    h.orbitA.rotation.y += dt * 0.22;
+    h.orbitB.rotation.y -= dt * 0.32;
+    for (const grp of [h.orbitA, h.orbitB]) for (const c of grp.children) c.position.y = c.userData.y0 + Math.sin(time * 1.4 + c.userData.ph) * 0.05;
     h.light.intensity = 0.55 + Math.sin(time * 1.6) * 0.15;
     h.glow.material.opacity = 0.35 + Math.sin(time * 1.6) * 0.12;
-    h.glow.scale.setScalar(2.1 + Math.sin(time * 1.6) * 0.2);
-    h.fruits.forEach((f, i) => { f.position.y += Math.sin(time * 1.5 + i) * 0.0007; });
-    // 不断向外扩散的光辉：一圈圈光环 + 缓缓升起的光点
+    h.glow.scale.setScalar(2.5 + Math.sin(time * 1.6) * 0.2);
+    // 生命提示：古树掉血时，水晶一片片熄灭（变暗、变透明）
+    const S0 = G.S, lifeFrac = S0.phase === 'title' || S0.lives == null ? 1 : Math.max(0, Math.min(1, S0.lives / G.CFG.START_LIVES));
+    const lit = Math.ceil(lifeFrac * h.leaves.length);
+    h.leafMesh.material.opacity = 0.35 + 0.53 * lifeFrac;   // 小叶也随生命变淡
+    h.leaves.forEach((L, i) => {
+      const want = i < lit ? 1 : 0;
+      if (Math.abs(L.on - want) < 0.002) return;
+      L.on += (want - L.on) * Math.min(1, dt * 3);
+      L.mat.emissiveIntensity = 0.04 + 0.56 * L.on;
+      L.mat.opacity = 0.3 + 0.3 * L.on;
+      L.coreMat.opacity = 0.04 + 0.959 * L.on;
+    });
+    // 不断向外扩散的光辉：从树冠落向地面的一圈圈光环 + 缓缓升起的光点
     const hp = h.group.position;
     Wd.auraT = (Wd.auraT || 0) - dt;
     if (Wd.auraT <= 0) {
-      Wd.auraT = 1.4;
-      G.FX.softRing(hp, 0x9ff4ff, 0.4, 3.0, 2.4, 0.07, 0.4, 'ring', 1.0);
-      G.FX.softRing(new THREE.Vector3(hp.x + 0.2, 0, hp.z), 0xd8c8ff, 0.3, 1.8, 2.0, 1.4, 0.22, 'ring', 1.0);
+      Wd.auraT = 2.0;
+      // 从树冠高度出发，一边扩大一边落向地面（像光从树冠罩下来）
+      const ring = G.FX.softRing(hp, 0x9ff4ff, 0.5, 3.0, 2.8, 1.75, 0.4, 'ring', 1.0);
+      let t = 0;
+      G.FX.add(d => {
+        t += d;
+        const k = Math.min(1, t / 2.8);
+        ring.position.y = 0.07 + (1.75 - 0.07) * Math.pow(1 - k, 2.2);
+        return k < 1;
+      });
     }
     if (Math.random() < dt * 14) {
       const a = Math.random() * Math.PI * 2, r = 0.2 + Math.random() * 0.7;
-      G.FX.emit(new THREE.Vector3(hp.x + 0.2 + Math.cos(a) * r, 0.9 + Math.random() * 0.9, hp.z + Math.sin(a) * r), 1, Math.random() < 0.5 ? 0x9ff4ff : 0xe0d0ff, 0.15, 2.2, 0.35, -0.12, 0.05, 1.3);
+      G.FX.emit(new THREE.Vector3(hp.x + Math.cos(a) * r, 0.9 + Math.random() * 1.1, hp.z + Math.sin(a) * r), 1, Math.random() < 0.5 ? 0x9ff4ff : 0xe0d0ff, 0.15, 2.2, 0.35, -0.12, 0.05, 1.3);
+    }
+    if (Math.random() < dt * 3) {   // 树冠飘落的花瓣
+      const a = Math.random() * Math.PI * 2, r = 0.3 + Math.random() * 0.6;
+      G.FX.emit(new THREE.Vector3(hp.x + Math.cos(a) * r, 1.5 + Math.random() * 0.5, hp.z + Math.sin(a) * r), 1, Math.random() < 0.6 ? 0xffc2ea : 0xe0d0ff, 0.12, 3.0, -0.15, 0.05, 0.05, 1.2);
     }
     for (const p of Wd.portals) {
       const active = p.openWave <= G.S.wave + (G.S.phase === 'combat' ? 0 : 1);
