@@ -10,12 +10,14 @@
     for (const e of S.enemies || []) e.remove();
     for (const t of S.towers || []) G.scene.remove(t.m.group);
     for (const p of S.projectiles || []) p.remove(true);
+    if (G.OmenFX) G.OmenFX.clear();
     Object.assign(S, {
       phase: 'prep', wave: 0, gold: CFG.START_GOLD, ley: CFG.START_LEY, lives: CFG.START_LIVES,
       speed: 1, paused: false, time: 0,
       enemies: [], towers: [], projectiles: [], queue: [], waveTime: 0, undo: [], selected: null,
       stats: { kills: 0, leaks: 0, built: 0 }, taken: new Set(), portalCounter: 0,
       hand: [], expandTokens: 0, offers: null, rng: Math.random,
+      omens: [], om: Object.assign({}, G.OMEN_DEFAULT), purged: false, seenOmen: false, lastOmens: [], boltT: 0,
       mods: {
         dmg: { archer: 1, obelisk: 1, thorn: 1, catapult: 1 },
         range: { archer: 1, obelisk: 1, thorn: 1, catapult: 1 },
@@ -50,10 +52,13 @@
     constructor(type, start, fromPos) {
       const d = this.def = G.ENEMIES[type];
       this.type = type;
-      const hm = d.boss ? 1 : G.hpMul(S.wave);
+      const om = S.om;
+      const hm = d.boss ? 1 : G.hpMul(S.wave) * om.hp;
       this.maxHp = this.hp = Math.round(d.hp * hm);
-      this.maxShield = this.shield = Math.round((d.shield || 0) * hm);
-      this.armor = d.armor; this.speed = d.speed; this.fly = !!d.fly;
+      this.maxShield = this.shield = Math.round((d.shield || 0) * hm * om.shieldMul) + (d.boss ? 0 : Math.round(this.maxHp * om.shieldPct));
+      this.armor = om.noArmor ? 0 : Math.min(0.75, Math.max(d.armor, d.armor + om.armor));
+      this.speed = d.speed * om.speed; this.fly = !!d.fly;
+      this.regen = (d.regen || 0) + (d.boss ? 0 : om.regen * this.maxHp);
       this.m = M.enemy(type);
       this.scale = d.scale * 1.25;
       this.m.group.scale.setScalar(this.scale);
@@ -65,6 +70,8 @@
       this.slowT = 0; this.slowAmt = 0; this.stunT = 0; this.flash = 0; this.anim = Math.random() * 10;
       this.summonT = d.summon ? d.summon.every : 0;
       this.dmgAcc = 0; this.dmgT = 0;
+      this.baseEm = G.OmenFX.enemyTint();   // 天象给敌人身体染上的颜色
+      for (const m of this.m.mats) m.emissive.copy(this.baseEm);
       G.scene.add(this.m.group);
       this.m.group.position.copy(this.pos);
       // 血条
@@ -97,10 +104,9 @@
       this.anim += dt;
       if (this.flash > 0) {
         this.flash -= dt;
-        const c = this.flash > 0 ? 0x888888 : 0x000000;
-        for (const m of this.m.mats) m.emissive.setHex(c);
+        for (const m of this.m.mats) { if (this.flash > 0) m.emissive.setHex(0x888888); else m.emissive.copy(this.baseEm); }
       }
-      if (this.def.regen) this.hp = Math.min(this.maxHp, this.hp + this.def.regen * dt);
+      if (this.regen) this.hp = Math.min(this.maxHp, this.hp + this.regen * dt);
       if (this.def.summon) {
         this.summonT -= dt;
         if (this.summonT <= 0 && this.tile) {
@@ -176,14 +182,14 @@
     }
     kill() {
       if (this.dead) return;
-      const gold = Math.round(this.def.gold * G.goldMul(S.wave) * S.mods.killGold);
+      const gold = Math.round(this.def.gold * G.goldMul(S.wave) * S.mods.killGold * S.om.gold);
       S.gold += gold;
       S.stats.kills++;
       A.play('die');
       const p = this.aimPoint();
       FX.emit(p, this.def.boss ? 80 : 16, 0xb04dff, this.def.boss ? 4 : 2, 0.6);
       FX.emit(p, 6, 0xffe27a, 1.5, 0.5);
-      FX.text(p, '+' + gold, 'goldtxt');
+      if (!G.OmenFX.onKill(this, gold)) FX.text(p, '+' + gold, 'goldtxt');
       G.Hero.gainXp(this.def.boss ? 30 : 1);
       if (this.def.boss) { G.shake(0.6); FX.ring(this.pos, 0xff7be0, 0.3, 3, 0.8); }
       this.dead = true;
@@ -200,12 +206,12 @@
 
   // ======================= 塔 =======================
   G.towerStats = function (type, level, h, buff) {
-    const def = G.TOWERS[type], L = def.levels[level], hm = S.mods.heightMul;
+    const def = G.TOWERS[type], L = def.levels[level], hm = S.mods.heightMul, om = S.om;
     const rM = 1 + (CFG.HEIGHT_RANGE[h] - 1) * hm, dM = 1 + (CFG.HEIGHT_DMG[h] - 1) * hm;
     return {
-      dmg: L.dmg * dM * S.mods.dmg[type],
-      range: L.range * rM * S.mods.range[type],
-      cd: L.cd / (S.mods.rate * (buff ? 1 + G.HERO.skills.e.haste : 1)),
+      dmg: L.dmg * dM * S.mods.dmg[type] * (def.dmgType === 'magic' ? om.magic : 1),
+      range: L.range * rM * S.mods.range[type] * om.range,
+      cd: L.cd / (S.mods.rate * om.rate * (buff ? 1 + G.HERO.skills.e.haste : 1)),
       splash: (L.splash || 0) * S.mods.splash, minRange: L.minRange || 0, slow: L.slow || 0,
       multi: L.multi || 1, chain: L.chain || 0, rM, dM,
     };
@@ -503,7 +509,8 @@
     Hero.marker.position.set(Hero.dest.x, Wd.groundY(Hero.dest.x, Hero.dest.z) + 0.05, Hero.dest.z);
     Hero.markerT = 0.8;
   };
-  Hero.dmg = () => G.HERO.dmg * (1 + 0.25 * (Hero.lvl - 1)) * S.mods.heroDmg;
+  Hero.dmg = () => G.HERO.dmg * (1 + 0.25 * (Hero.lvl - 1)) * S.mods.heroDmg * S.om.heroDmg * S.om.magic;
+  Hero.cdMul = () => S.mods.heroCd * S.om.heroCd;
   Hero.gainXp = function (n) {
     if (Hero.lvl >= G.HERO.xpLevels.length) return;
     Hero.xp += n;
@@ -565,9 +572,9 @@
   Hero.castStarfall = function (p) {
     const sk = G.HERO.skills.q;
     if (!Hero.ready('q')) return false;
-    Hero.skill.q = sk.cd * S.mods.heroCd;
+    Hero.skill.q = sk.cd * Hero.cdMul();
     A.play('star');
-    const total = (sk.dmg + 40 * (Hero.lvl - 1)) * S.mods.heroDmg;
+    const total = (sk.dmg + 40 * (Hero.lvl - 1)) * S.mods.heroDmg * S.om.heroDmg * S.om.magic;
     // 预警：地面上柔和的金色光斑
     FX.softRing(p, 0xffc860, sk.radius * 0.9, sk.radius * 1.05, 1.3, 0.07, 0.55, 'disc', 0.9);
     FX.softRing(p, 0xffd27a, sk.radius * 1.15, sk.radius * 0.95, 1.3, 0.08, 0.7);
@@ -622,7 +629,7 @@
   Hero.castBloom = function () {
     const sk = G.HERO.skills.e;
     if (!Hero.ready('e')) return false;
-    Hero.skill.e = sk.cd * S.mods.heroCd;
+    Hero.skill.e = sk.cd * Hero.cdMul();
     A.play('bloom');
     const c = V().set(Hero.pos.x, Wd.groundY(Hero.pos.x, Hero.pos.z), Hero.pos.z);
     FX.softRing(c, 0xff6fb0, 0.3, sk.radius * 1.1, 1.2, c.y + 0.1, 0.55, 'ring', 1.0);
@@ -656,7 +663,10 @@
     const groups = G.WAVES[S.wave - 1];
     const active = Wd.portals.filter(p => p.openWave <= S.wave);
     const q = [];
-    for (const [type, count, interval, delay] of groups) {
+    for (const [type, count0, interval0, delay] of groups) {
+      const boss = G.ENEMIES[type].boss;
+      const count = boss ? count0 : Math.round(count0 * S.om.count);
+      const interval = interval0 * count0 / Math.max(1, count);   // 数量变多时出怪更密，整组时长不变
       for (let i = 0; i < count; i++) {
         let portal;
         if (G.ENEMIES[type].boss) portal = active[0];
@@ -667,13 +677,16 @@
     q.sort((a, b) => a.t - b.t);
     S.queue = q;
     S.waveTotal = q.length;
+    S.boltT = S.om.bolt;
     A.play('wave');
+    const omenLine = S.omens.length ? '<br>' + S.omens.map(id => { const o = G.omen(id); return o.icon + ' ' + o.name; }).join('　') : '';
     const newPortal = Wd.portals.find(p => p.openWave === S.wave && S.wave > 1);
-    if (newPortal) { A.play('portal'); G.UI.banner(`${newPortal.name}已开启！`, '敌人将从两个方向进攻'); }
-    else G.UI.banner(`第 ${S.wave} 波`, groups.map(g => G.ENEMIES[g[0]].name + ' ×' + g[1]).join('　'));
+    if (newPortal) { A.play('portal'); G.UI.banner(`${newPortal.name}已开启！`, '敌人将从两个方向进攻' + omenLine); }
+    else G.UI.banner(`第 ${S.wave} 波`, groups.map(g => G.ENEMIES[g[0]].name + ' ×' + G.groupCount(g)).join('　') + omenLine);
     const boss = groups.some(g => G.ENEMIES[g[0]].boss);
     if (boss) setTimeout(() => G.UI.toast('⚠ Boss 来袭！', 'warn'), 1500);
     G.Music.setIntensity(boss ? 2 : 1);   // 配乐进入战斗版（Boss 波更激烈）
+    G.OmenFX.activate();
     G.UI.refresh();
   };
   G.updateWave = function (dt) {
@@ -683,6 +696,13 @@
       const tile = Wd.get(s.portal.x, s.portal.y);
       S.enemies.push(new Enemy(s.type, tile));
       FX.emit(V().set(tile.wx, 0.5, tile.wz), 8, 0xb04dff, 1.2, 0.5);
+    }
+    if (S.om.bolt > 0) {   // 雷暴：定时落雷
+      S.boltT -= dt;
+      if (S.boltT <= 0) {
+        const alive = S.enemies.filter(e => !e.dead);
+        if (alive.length) { G.lightning(alive[Math.floor(Math.random() * alive.length)]); S.boltT = S.om.bolt; }
+      }
     }
     if (!S.queue.length && !S.enemies.some(e => !e.dead)) G.waveCleared();
   };
@@ -713,13 +733,67 @@
     if (!b.repeat) S.taken.add(b.id);
     A.play('bless');
     S.phase = 'prep';
+    G.rollOmens(S.wave + 1);
     Wd.recompute();
     if (S.expandTokens > 0) setTimeout(() => G.UI.toast(`🗺 获得区域扩张机会（${S.expandTokens}）——点击右上角「区域扩张」`, 'good'), 600);
-    if (S.wave + 1 === CFG.PORTAL_B_WAVE) {
+    const portalNews = S.wave + 1 === CFG.PORTAL_B_WAVE;
+    if (S.omens.length) setTimeout(() => { if (S.phase !== 'prep') return; G.OmenFX.reveal(S.seenOmen ? '天象降临' : '天象初现', `第 ${S.wave + 1} 波`); S.seenOmen = true; }, portalNews ? 3000 : 350);
+    if (portalNews) {
       const p = Wd.portals[1];
       G.UI.banner(`${p.name}正在苏醒……`, '下一波开始，敌人会从两个方向进攻。紫色虚线是它们的路线');
     }
     G.UI.refresh();
+  };
+
+  // ======================= 天象（整波的全场效果） =======================
+  G.omen = id => G.OMENS.find(o => o.id === id);
+  G.groupCount = g => G.ENEMIES[g[0]].boss ? g[1] : Math.round(g[1] * S.om.count);
+  G.applyOmens = function () {
+    const om = S.om = Object.assign({}, G.OMEN_DEFAULT);
+    for (const id of S.omens) {
+      const fx = G.omen(id).fx;
+      for (const k in fx) {
+        if (k === 'noArmor') om.noArmor = om.noArmor || fx.noArmor;
+        else if (k === 'armor' || k === 'shieldPct' || k === 'regen') om[k] += fx[k];
+        else if (k === 'bolt') om.bolt = om.bolt ? Math.min(om.bolt, fx.bolt) : fx.bolt;
+        else om[k] *= fx[k];
+      }
+    }
+  };
+  // 第 1~2 波风平浪静；3~8 波一个天象（凶兆 50% / 吉兆 30% / 异象 20%）；
+  // 9 波起必有一个凶兆，另加一个吉兆（60%）或异象（40%）。不会连续两波出现同一个天象
+  G.rollOmens = function (n) {
+    const pick = kind => {
+      const fresh = o => o.kind === kind && !S.omens.includes(o.id);
+      const pool = G.OMENS.filter(o => fresh(o) && !S.lastOmens.includes(o.id));
+      const list = pool.length ? pool : G.OMENS.filter(fresh);
+      S.omens.push(list[Math.floor(Math.random() * list.length)].id);
+    };
+    S.lastOmens = S.omens;
+    S.omens = []; S.purged = false;
+    if (n >= 3 && n <= 8) { const r = Math.random(); pick(r < 0.5 ? 'curse' : r < 0.8 ? 'boon' : 'twist'); }
+    else if (n >= 9) { pick('curse'); pick(Math.random() < 0.6 ? 'boon' : 'twist'); }
+    G.applyOmens();
+  };
+  // 落雷（G.lightning）的实现在 omenfx.js
+  // 用地脉能量驱散一个凶兆（每波一次）
+  G.purgeOmen = function (id) {
+    if (S.phase !== 'prep') return fail('只能在备战阶段驱散');
+    const o = G.omen(id);
+    if (!o || o.kind !== 'curse' || !S.omens.includes(id)) return false;
+    if (S.purged) return fail('每波只能驱散一次凶兆');
+    if (S.ley < G.PURGE_COST) return fail('地脉能量不足');
+    S.ley -= G.PURGE_COST;
+    S.omens = S.omens.filter(x => x !== id);
+    S.purged = true;
+    G.applyOmens();
+    A.play('bless');
+    const h = Wd.heartObj.group.position;
+    FX.softRing(V().set(h.x, 0, h.z), 0x9ff4ff, 0.3, 4, 1.2, 0.1, 0.6);
+    FX.emit(V().set(h.x, 1.5, h.z), 40, 0x9ff4ff, 2.5, 0.9);
+    G.UI.toast(`古树的光辉驱散了「${o.name}」`, 'good');
+    G.UI.refresh();
+    return true;
   };
   G.endGame = function (win) {
     if (S.phase === 'over' || S.phase === 'win') return;
@@ -850,6 +924,8 @@
   G.startRun = function () {
     S.expandTokens = 1;   // 开局送一次区域扩张
     S.hand = ['sq', 'tri', 'ell3'];
+    S.omens = []; S.lastOmens = [];
+    G.rollOmens(1);
     G.drawPieces(CFG.HAND_START - S.hand.length);
   };
   // 形状旋转后的格子（以悬停的格子为中心）

@@ -57,6 +57,11 @@
     levelup: () => { [523, 784, 1046, 1568].forEach((f, i) => tone(f, 0.4, 'triangle', 0.1, 0, i * 0.08)); },
     shield: () => tone(900, 0.2, 'square', 0.06, -600),
     lose: () => { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.6, 'triangle', 0.15, 0, i * 0.25)); },
+    omenCurse: () => { tone(98, 1.6, 'sawtooth', 0.1, -30); tone(147, 1.6, 'sawtooth', 0.07, -45, 0.15); noise(1.4, 0.14, 260); tone(1200, 0.9, 'sine', 0.03, -900, 0.1); },
+    omenBoon: () => { [659, 880, 1109, 1319, 1760].forEach((f, i) => tone(f, 0.9, 'sine', 0.08, 0, i * 0.09)); noise(0.8, 0.05, 6000, 0.1); },
+    omenTwist: () => { [440, 415, 554, 523].forEach((f, i) => tone(f, 0.7, 'triangle', 0.09, i % 2 ? -30 : 30, i * 0.14)); noise(1.0, 0.08, 500); },
+    thunder: () => { noise(0.12, 0.6, 5000); noise(1.6, 0.45, 220, 0.04); tone(55, 1.2, 'sine', 0.35, -20, 0.02); },
+    rumble: () => { noise(1.8, 0.12, 160); },
     portal: () => { tone(90, 1.2, 'sawtooth', 0.12, 60); noise(1.0, 0.15, 400); },
   };
   A.play = function (name, minGap = 0.045) {

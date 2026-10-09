@@ -27,6 +27,7 @@
 | `js/terrain.js` | `G.Terrain`：地面高度图网格（含高地）、上色、水面、实例化装饰、外围森林、建造网格、扩张空位预览 |
 | `js/world.js` | `G.World`：地块数据、区域/开拓、传送门定位、寻路距离场、敌人路线光点、地块模型（树/岩石/水晶） |
 | `js/game.js` | `G.S` 游戏状态；`Enemy` / `Tower` / `Proj` 类；英雄 `G.Hero`；波次；玩家操作 `G.act.*`；手牌与区域扩张逻辑 |
+| `js/omenfx.js` | `G.OmenFX`：天象的表现层——屏幕中央揭示卡片、全屏色调（`.veil.v-*`）、战场氛围粒子 / 风 / 雨 / 雾 / 极光、敌人着色、落雷 `G.lightning`。包装了 `G.update` 每帧驱动 |
 | `js/ui.js` | `G.UI`：HUD、建造栏、手牌栏、扩张面板、塔面板、提示框、标题画面交互、鼠标键盘输入、悬停预览 |
 | `js/main.js` | 渲染器、场景、灯光、后处理管线、生物群系切换、镜头、`G.newMap` / `G.beginRun` / 缩略图、主循环 |
 
@@ -116,6 +117,7 @@
 - **新地图（生物群系）**：见第 4 节"生物群系"。
 - **新扩张区域**：`G.REGIONS` 加描述 + `Wd.makeRegion` 加布局生成 + （如有特殊效果）`act.expand` / `G.waveCleared` 里处理。
 - **新祝福**：`G.BLESSINGS` 加一项，`apply(s)` 修改 `s.mods` 或资源。
+- **新天象**：`G.OMENS` 加一项（`kind: curse/boon/twist` + `fx`，字段含义见 config.js 注释）。天象是**整波临时效果**：`G.rollOmens(n)` 在进入第 n 波备战时抽取 → `G.applyOmens()` 汇总到 `S.om`，敌人构造、`towerStats`、露娜伤害/冷却、击杀金叶、出怪数量都读 `S.om`。新增 fx 字段时记得在 `G.OMEN_DEFAULT` 里给默认值。表现在 `omenfx.js` 的 `VIS[id]` 加一项（主题色、全屏色调、粒子），并在 style.css 加对应的 `.v-<veil>` 样式。
 
 ## 11. 尚未实现的想法
 

@@ -140,6 +140,7 @@
 
   // ---------------- 刷新 ----------------
   UI.refresh = function () {
+    G.OmenFX.sync();
     $('#r-lives').textContent = S.lives;
     $('#r-gold').textContent = fmt(S.gold);
     $('#r-ley').textContent = S.ley;
@@ -166,12 +167,14 @@
       const twoPortals = Wd.portals[1].openWave <= n;
       wp.hidden = false;
       wp.innerHTML = `<div class="wp-title">下一波 · 第 ${n} 波${twoPortals ? '<span class="tag">双向进攻</span>' : ''}</div>
-        <div class="wp-list">${next.map(g => `<span class="chip" data-tip="enemy:${g[0]}">${enemyIc(g[0])}×${g[1]}</span>`).join('')}</div>
+        <div class="wp-list">${next.map(g => `<span class="chip" data-tip="enemy:${g[0]}">${enemyIc(g[0])}×${G.groupCount(g)}</span>`).join('')}</div>
+        ${omenHtml(true)}
         <button id="btn-start2" class="primary">⚔ 开始战斗 <kbd>空格</kbd></button>`;
       $('#btn-start2').onclick = () => G.startWave();
+      wp.querySelectorAll('[data-purge]').forEach(b => b.onclick = () => G.purgeOmen(b.dataset.purge));
     } else if (S.phase === 'combat') {
       wp.hidden = false;
-      wp.innerHTML = `<div class="wp-title">第 ${S.wave} 波 · 战斗中</div><div class="wprog"><i id="wprog"></i></div><div class="wp-sub" id="wleft"></div>`;
+      wp.innerHTML = `<div class="wp-title">第 ${S.wave} 波 · 战斗中</div>${omenHtml(false)}<div class="wprog"><i id="wprog"></i></div><div class="wp-sub" id="wleft"></div>`;
     } else wp.hidden = true;
     $('#btn-start').hidden = true;
     if (prep && S.expandTokens > 0) {
@@ -273,6 +276,18 @@
     p.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { tw.mode = b.dataset.mode; UI.refreshTower(); });
   };
 
+  // 天象：备战时可驱散凶兆
+  const OMEN_KIND = { curse: '凶兆', boon: '吉兆', twist: '异象' };
+  function omenHtml(prep) {
+    if (!S.omens.length) return '';
+    return `<div class="wp-omens">${S.omens.map(id => {
+      const o = G.omen(id);
+      const purge = prep && o.kind === 'curse' && !S.purged
+        ? `<button class="purge ${S.ley < G.PURGE_COST ? 'poor' : ''}" data-purge="${id}" data-tip="purge">驱散 💠${G.PURGE_COST}</button>` : '';
+      return `<div class="omen ${o.kind}" data-tip="omen:${id}"><span class="oi">${o.icon}</span><span class="on"><small>${OMEN_KIND[o.kind]}</small>${o.name}</span>${purge}</div>`;
+    }).join('')}</div>`;
+  }
+
   // ---------------- 提示框 ----------------
   function tipHtml(key) {
     if (key === 'tip:raise') return `<h4>⛰️ 隆起地块 <kbd>Z</kbd></h4><p>花费 1 地脉能量，把地块抬高一级（最高 3 级）。</p><p>· 高于地面的地块<b>会挡住敌人</b>，可以用来规划敌人的路线。<br>· 塔只能建在高地上。<br>· 2 级、3 级高地上的塔获得<b>射程和伤害加成</b>。<br>· 按住左键拖动可以连续隆起。<br>· 只能在备战阶段使用，不能完全堵死道路。</p>`;
@@ -280,7 +295,7 @@
     if (key === 'tip:hero') return `<h4>🧚 月之仙子 · 露娜</h4><p>会自动攻击附近的敌人，包括飞行单位。<br><b>右键</b>点击地图可以让她飞过去。每次击杀都会给她经验，最高 5 级。<br>点击头像可以把镜头移到她身上。</p>`;
     if (key === 'tip:q' || key === 'tip:e') {
       const k = key.slice(4), sk = G.HERO.skills[k];
-      return `<h4>${sk.icon} ${sk.name} <kbd>${k.toUpperCase()}</kbd></h4><p>${sk.desc}</p><p class="dim">冷却 ${fmt(sk.cd * S.mods.heroCd)} 秒${k === 'q' ? '　·　按 Q 后左键点击目标位置' : ''}</p>`;
+      return `<h4>${sk.icon} ${sk.name} <kbd>${k.toUpperCase()}</kbd></h4><p>${sk.desc}</p><p class="dim">冷却 ${fmt(sk.cd * G.Hero.cdMul())} 秒${k === 'q' ? '　·　按 Q 后左键点击目标位置' : ''}</p>`;
     }
     if (key.startsWith('tip:tower:')) {
       const type = key.slice(10), d = G.TOWERS[type];
@@ -294,10 +309,18 @@
       return `<h4>🧩 ${pc.name}</h4><p>${pc.desc || '覆盖的格子各抬高 1 级。抬高的地块会挡住敌人，也可以在上面建塔。'}</p><p class="dim">点击选中 → <kbd>R</kbd> 旋转 → 左键放下（免费，可撤销）</p>`;
     }
     if (key.startsWith('enemy:')) {
-      const type = key.slice(6), d = G.ENEMIES[type];
-      const hp = d.boss ? d.hp : Math.round(d.hp * G.hpMul(S.wave + 1));
-      return `<h4>${d.icon} ${d.name}</h4><p>${d.desc}</p><p class="dim">生命 ${hp}${d.shield ? '　护盾 ' + Math.round(d.shield * G.hpMul(S.wave + 1)) : ''}${d.armor ? '　护甲 ' + d.armor * 100 + '%' : ''}　速度 ${d.speed}　漏怪扣 ${d.leak >= 99 ? '全部' : d.leak} 点生命</p>`;
+      const type = key.slice(6), d = G.ENEMIES[type], om = S.om;
+      const hm = d.boss ? 1 : G.hpMul(S.phase === 'combat' ? S.wave : S.wave + 1) * om.hp;
+      const hp = Math.round(d.hp * hm);
+      const sh = Math.round((d.shield || 0) * hm * om.shieldMul) + (d.boss ? 0 : Math.round(hp * om.shieldPct));
+      const ar = om.noArmor ? 0 : Math.min(0.75, Math.max(d.armor, d.armor + om.armor));
+      return `<h4>${d.icon} ${d.name}</h4><p>${d.desc}</p><p class="dim">生命 ${hp}${sh ? '　护盾 ' + sh : ''}${ar ? '　护甲 ' + Math.round(ar * 100) + '%' : ''}　速度 ${+(d.speed * om.speed).toFixed(2)}　漏怪扣 ${d.leak >= 99 ? '全部' : d.leak} 点生命</p>${S.omens.length ? '<p class="dim">（已计入天象效果）</p>' : ''}`;
     }
+    if (key.startsWith('omen:')) {
+      const o = G.omen(key.slice(5));
+      return `<h4>${o.icon} ${o.name} <small class="okind ${o.kind}">${OMEN_KIND[o.kind]}</small></h4><p>${o.desc}</p><p class="dim">天象只持续这一波，下一波会重新变化。${o.kind === 'curse' ? `<br>备战时可花费 💠${G.PURGE_COST} 地脉能量驱散（每波一次）。` : ''}</p>`;
+    }
+    if (key === 'purge') return `<h4>✨ 驱散凶兆</h4><p>花费 💠${G.PURGE_COST} 地脉能量，借古树之力驱散这个凶兆。每波只能驱散一次。</p>`;
     return key;
   }
   function bindTips() {
@@ -698,7 +721,7 @@
     $('#hero-xp').style.width = Hh.lvl >= xl.length ? '100%' : ((Hh.xp - xl[Hh.lvl - 1]) / (xl[Hh.lvl] - xl[Hh.lvl - 1]) * 100) + '%';
     for (const s of ['q', 'e']) {
       const el = $('#sk-' + s);
-      const cd = Hh.skill[s], tot = G.HERO.skills[s].cd * S.mods.heroCd;
+      const cd = Hh.skill[s], tot = G.HERO.skills[s].cd * G.Hero.cdMul();
       el.querySelector('.cdmask').style.height = cd > 0 ? (cd / tot * 100) + '%' : '0';
       el.querySelector('.cdt').textContent = cd > 0 ? Math.ceil(cd) : '';
       el.classList.toggle('ready', cd <= 0);

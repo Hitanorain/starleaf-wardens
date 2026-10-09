@@ -27,7 +27,7 @@ G.CFG = {
 };
 
 // 每波怪物生命倍率（Boss 不吃这个倍率）
-G.hpMul = w => 1 + 0.11 * (w - 1) + 0.011 * (w - 1) * (w - 1);
+G.hpMul = w => 1 + 0.13 * (w - 1) + 0.014 * (w - 1) * (w - 1);
 G.goldMul = w => 1 + 0.04 * (w - 1);
 
 G.TOWERS = {
@@ -70,41 +70,76 @@ G.TOWERS = {
 };
 
 G.ENEMIES = {
-  goblin:   { name: '哥布林',     icon: '👺', hp: 40,   speed: 1.5,  gold: 4,   armor: 0,    leak: 1, scale: 1,
+  goblin:   { name: '哥布林',     icon: '👺', hp: 40,   speed: 1.5,  gold: 3,   armor: 0,    leak: 1, scale: 1,
               desc: '数量众多的小喽啰。' },
-  wolf:     { name: '腐化狼',     icon: '🐺', hp: 30,   speed: 2.4,  gold: 4,   armor: 0,    leak: 1, scale: 1,
+  wolf:     { name: '腐化狼',     icon: '🐺', hp: 30,   speed: 2.4,  gold: 3,   armor: 0,    leak: 1, scale: 1,
               desc: '速度极快，成群出没。荆棘藤可以有效减速。' },
-  orc:      { name: '兽人蛮兵',   icon: '👹', hp: 170,  speed: 0.85, gold: 12,  armor: 0.4,  leak: 2, scale: 1,
+  orc:      { name: '兽人蛮兵',   icon: '👹', hp: 170,  speed: 0.85, gold: 9,   armor: 0.4,  leak: 2, scale: 1,
               desc: '护甲 40%：物理伤害降低 40%。用方尖碑、荆棘或露娜的魔法伤害对付。' },
-  skeleton: { name: '骷髅盾卫',   icon: '💀', hp: 70,   speed: 1.1,  gold: 9,   armor: 0,    leak: 2, scale: 1, shield: 90,
+  skeleton: { name: '骷髅盾卫',   icon: '💀', hp: 70,   speed: 1.1,  gold: 7,   armor: 0,    leak: 2, scale: 1, shield: 90,
               desc: '护盾：先吸收伤害，魔法伤害对护盾 ×2。' },
-  bat:      { name: '暗影蝙蝠',   icon: '🦇', hp: 35,   speed: 1.7,  gold: 5,   armor: 0,    leak: 1, scale: 1, fly: true,
+  bat:      { name: '暗影蝙蝠',   icon: '🦇', hp: 35,   speed: 1.7,  gold: 4,   armor: 0,    leak: 1, scale: 1, fly: true,
               desc: '飞行：无视地形直线飞向古树。只有弓手塔、方尖碑和露娜能攻击。' },
-  ogre:     { name: '食人魔督军', icon: '👿', hp: 2600, speed: 0.6,  gold: 80,  armor: 0.3,  leak: 6, scale: 1.3, boss: true,
+  ogre:     { name: '食人魔督军', icon: '👿', hp: 3200, speed: 0.6,  gold: 80,  armor: 0.3,  leak: 6, scale: 1.3, boss: true,
               desc: 'Boss：血量很高，护甲 30%。' },
-  troll:    { name: '腐化巨魔王', icon: '👑', hp: 16000, speed: 0.5, gold: 200, armor: 0.3,  leak: 99, scale: 1.7, boss: true,
+  troll:    { name: '腐化巨魔王', icon: '👑', hp: 19000, speed: 0.5, gold: 200, armor: 0.3,  leak: 99, scale: 1.7, boss: true,
               regen: 20, summon: { type: 'goblin', every: 6, count: 3 },
               desc: '最终 Boss：每秒回复生命，并不断召唤哥布林。放过它就失败。' },
 };
 
 // 每组：[类型, 数量, 间隔秒, 开始延迟秒]
 G.WAVES = [
-  [['goblin', 8, 1.0, 0]],
-  [['goblin', 12, 0.8, 0]],
-  [['wolf', 8, 0.7, 0], ['goblin', 8, 0.9, 4]],
-  [['goblin', 10, 0.8, 0], ['orc', 4, 2.2, 3]],
-  [['goblin', 8, 0.8, 0], ['bat', 10, 0.9, 4]],
-  [['skeleton', 6, 1.6, 0], ['wolf', 10, 0.6, 3]],
-  [['goblin', 16, 0.5, 0], ['orc', 6, 1.8, 4]],
-  [['bat', 14, 0.6, 0], ['skeleton', 8, 1.3, 2]],
-  [['wolf', 22, 0.4, 0], ['orc', 6, 1.6, 5]],
-  [['goblin', 20, 0.5, 0], ['ogre', 1, 1, 6]],
-  [['skeleton', 12, 1.0, 0], ['bat', 14, 0.6, 3]],
-  [['orc', 10, 1.2, 0], ['wolf', 18, 0.4, 4]],
-  [['skeleton', 10, 0.9, 0], ['orc', 8, 1.2, 2], ['bat', 16, 0.5, 6]],
-  [['wolf', 24, 0.35, 0], ['orc', 12, 1.0, 3], ['skeleton', 12, 0.9, 6], ['bat', 16, 0.5, 8]],
-  [['goblin', 20, 0.5, 0], ['orc', 8, 1.4, 4], ['troll', 1, 1, 8], ['bat', 12, 0.6, 12]],
+  [['goblin', 14, 0.75, 0]],
+  [['goblin', 18, 0.6, 0], ['wolf', 6, 0.6, 8]],
+  [['wolf', 14, 0.5, 0], ['goblin', 14, 0.6, 4]],
+  [['goblin', 16, 0.55, 0], ['orc', 6, 1.8, 3]],
+  [['goblin', 14, 0.6, 0], ['bat', 14, 0.7, 4], ['wolf', 8, 0.5, 10]],
+  [['skeleton', 10, 1.2, 0], ['wolf', 16, 0.45, 3], ['goblin', 12, 0.5, 8]],
+  [['goblin', 26, 0.4, 0], ['orc', 9, 1.4, 4], ['skeleton', 6, 1.4, 10]],
+  [['bat', 22, 0.45, 0], ['skeleton', 12, 1.0, 2], ['wolf', 12, 0.4, 9]],
+  [['wolf', 32, 0.3, 0], ['orc', 10, 1.2, 5], ['bat', 10, 0.6, 10]],
+  [['goblin', 30, 0.4, 0], ['orc', 6, 1.5, 4], ['ogre', 1, 1, 8], ['wolf', 14, 0.4, 14]],
+  [['skeleton', 18, 0.8, 0], ['bat', 22, 0.45, 3], ['goblin', 20, 0.35, 10]],
+  [['orc', 16, 0.9, 0], ['wolf', 28, 0.3, 4], ['skeleton', 8, 1.0, 10]],
+  [['skeleton', 16, 0.7, 0], ['orc', 14, 0.9, 2], ['bat', 24, 0.4, 6], ['wolf', 16, 0.35, 12]],
+  [['wolf', 34, 0.28, 0], ['orc', 18, 0.8, 3], ['skeleton', 16, 0.7, 6], ['bat', 24, 0.4, 8], ['ogre', 1, 1, 14]],
+  [['goblin', 30, 0.4, 0], ['orc', 14, 1.0, 4], ['troll', 1, 1, 8], ['bat', 18, 0.5, 12], ['skeleton', 12, 0.8, 16]],
 ];
+
+// 天象：作用于整波的全场效果。备战阶段就会公布，方便提前应对。
+// kind: curse 凶兆（不利）/ boon 吉兆（有利）/ twist 异象（有利有弊）
+// fx 字段（未写的取默认值）：
+//   hp 敌人生命倍率   speed 敌人移速倍率   armor 护甲加值   shieldPct 额外护盾（占生命比例）   shieldMul 原有护盾倍率
+//   regen 每秒回复最大生命的比例   count 普通敌人数量倍率   noArmor 护甲清零
+//   range / rate 塔射程 / 攻速倍率   magic 魔法伤害倍率（塔与露娜）   gold 击杀金叶倍率
+//   heroDmg / heroCd 露娜伤害 / 技能冷却倍率   bolt 每隔几秒落雷劈中随机敌人（伤害 = 40 + 14 × 波次，连锁 2 个目标各 50%）
+// Boss 不吃 hp / shieldPct / regen 效果
+G.OMENS = [
+  // ---- 凶兆 ----
+  { id: 'bloodmoon', kind: 'curse', icon: '🩸', name: '血月',     desc: '血色月光笼罩战场：敌人生命 +25%。',                   fx: { hp: 1.25 } },
+  { id: 'gale',      kind: 'curse', icon: '🌪️', name: '狂风',     desc: '狂风推着敌人前进：敌人移动速度 +18%。',              fx: { speed: 1.18 } },
+  { id: 'iron',      kind: 'curse', icon: '🛡️', name: '铁鳞',     desc: '敌人披上铁鳞：所有敌人护甲 +25%（最高 75%）。',      fx: { armor: 0.25 } },
+  { id: 'boneward',  kind: 'curse', icon: '☠️', name: '亡骨庇护', desc: '每个敌人额外获得相当于 35% 生命的护盾。',               fx: { shieldPct: 0.35 } },
+  { id: 'horde',     kind: 'curse', icon: '👣', name: '兽潮',     desc: '敌人数量 +40%（生命 -10%）。',                         fx: { count: 1.4, hp: 0.9 } },
+  { id: 'rot',       kind: 'curse', icon: '🍄', name: '腐生',     desc: '腐化之力滋养敌人：每秒回复 2% 最大生命。',             fx: { regen: 0.02 } },
+  { id: 'mist',      kind: 'curse', icon: '☁️', name: '迷雾',     desc: '浓雾遮蔽视野：所有塔射程 -15%。',                     fx: { range: 0.85 } },
+  { id: 'leyrift',   kind: 'curse', icon: '🌀', name: '地脉紊乱', desc: '地脉失衡：所有塔攻击速度 -15%。',                      fx: { rate: 0.85 } },
+  // ---- 吉兆 ----
+  { id: 'starry',    kind: 'boon',  icon: '🌌', name: '星辉之夜', desc: '星光倾泻：塔与露娜的魔法伤害 +30%。',                  fx: { magic: 1.3 } },
+  { id: 'tailwind',  kind: 'boon',  icon: '🍃', name: '顺风',     desc: '林间顺风：所有塔攻击速度 +20%。',                      fx: { rate: 1.2 } },
+  { id: 'mire',      kind: 'boon',  icon: '🐌', name: '泥沼',     desc: '雨后泥泞：敌人移动速度 -15%。',                        fx: { speed: 0.85 } },
+  { id: 'brittle',   kind: 'boon',  icon: '🧊', name: '霜脆',     desc: '寒气侵蚀：敌人护甲清零，护盾减半。',                   fx: { noArmor: true, shieldMul: 0.5 } },
+  { id: 'fullmoon',  kind: 'boon',  icon: '🌕', name: '满月',     desc: '露娜之力满盈：露娜伤害 +40%，技能冷却 -40%。',          fx: { heroDmg: 1.4, heroCd: 0.6 } },
+  { id: 'bounty',    kind: 'boon',  icon: '💰', name: '丰饶',     desc: '本波击杀获得的金叶 +50%。',                            fx: { gold: 1.5 } },
+  // ---- 异象 ----
+  { id: 'eclipse',   kind: 'twist', icon: '🌑', name: '日蚀',     desc: '敌人生命 +30%，但击杀金叶翻倍。',                      fx: { hp: 1.3, gold: 2 } },
+  { id: 'storm',     kind: 'twist', icon: '⛈️', name: '雷暴',     desc: '敌人移速 +10%，但每 2.5 秒落雷劈中一个敌人并眩晕它，闪电还会连锁 2 个附近的敌人。',          fx: { speed: 1.1, bolt: 2.5 } },
+  { id: 'aurora',    kind: 'twist', icon: '🌠', name: '极光',     desc: '塔射程 +15%，但敌人数量 +25%。',                       fx: { range: 1.15, count: 1.25 } },
+  { id: 'frenzy',    kind: 'twist', icon: '🔥', name: '狂热',     desc: '敌人移速 +15%，但生命 -15%，所有塔攻速 +10%。',         fx: { speed: 1.15, hp: 0.85, rate: 1.1 } },
+];
+G.OMEN_DEFAULT = { hp: 1, speed: 1, armor: 0, shieldPct: 0, shieldMul: 1, regen: 0, count: 1, noArmor: false,
+  range: 1, rate: 1, magic: 1, gold: 1, heroDmg: 1, heroCd: 1, bolt: 0 };
+G.PURGE_COST = 5;   // 用地脉能量驱散一个凶兆
 
 G.HERO = {
   name: '露娜', title: '月之仙子',

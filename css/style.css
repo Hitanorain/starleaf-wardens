@@ -421,3 +421,88 @@ button.ghost small { color: var(--dim); }
   background: var(--panel2); border: 1px solid var(--line); box-shadow: 0 20px 50px rgba(10, 0, 30, 0.5); animation: tin 0.2s; }
 #confirm-home h3 { margin: 0 0 6px; font-family: "ZCOOL XiaoWei", serif; font-weight: normal; font-size: 24px; color: var(--gold); }
 #confirm-home p { margin: 0 0 18px; color: var(--dim); font-size: 14px; }
+
+/* 天象 */
+.wp-omens { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.omen { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border-radius: 10px; cursor: help; border: 1px solid; }
+.omen .oi { width: 30px; height: 30px; display: grid; place-items: center; font-size: 20px; border-radius: 8px; background: rgba(0,0,0,0.25); }
+.omen .on { flex: 1; font-weight: bold; line-height: 1.15; }
+.omen .on small { display: block; font-size: 11px; font-weight: normal; opacity: 0.8; }
+.omen.curse { background: rgba(214, 52, 82, 0.22); border-color: rgba(255, 92, 120, 0.5); }
+.omen.curse .on small { color: #ff9cb0; }
+.omen.boon { background: rgba(80, 200, 140, 0.2); border-color: rgba(120, 240, 170, 0.5); }
+.omen.boon .on small { color: #9dffc8; }
+.omen.twist { background: rgba(240, 170, 60, 0.2); border-color: rgba(255, 200, 100, 0.5); }
+.omen.twist .on small { color: #ffd88a; }
+.omen .purge { padding: 3px 8px; font-size: 12px; border-radius: 8px; border: 1px solid rgba(159, 244, 255, 0.6); background: rgba(80, 180, 220, 0.25); color: #dff8ff; cursor: pointer; }
+.omen .purge:hover { background: rgba(80, 180, 220, 0.45); }
+.omen .purge.poor { opacity: 0.45; }
+.okind { font-size: 12px; padding: 1px 6px; border-radius: 6px; margin-left: 4px; vertical-align: 2px; }
+.okind.curse { background: #b8324e; } .okind.boon { background: #2f9a66; } .okind.twist { background: #b8862a; }
+
+/* 天象：全屏色调（在 HUD 下面） */
+#omen-veils, #omen-flash { position: absolute; inset: 0; pointer-events: none; }
+#omen-flash { opacity: 0; mix-blend-mode: screen; }
+.veil { position: absolute; inset: 0; opacity: 0; transition: opacity 1.4s ease; }
+.veil.prep { opacity: 0.4; }
+.veil.on { opacity: 1; }
+.v-blood   { box-shadow: inset 0 0 220px 70px rgba(200, 10, 45, 0.6); background: radial-gradient(ellipse at 50% -10%, rgba(255, 40, 70, 0.28), transparent 55%); animation: veilPulse 3s ease-in-out infinite; }
+.v-gale    { box-shadow: inset 0 0 180px 50px rgba(220, 240, 255, 0.45); background: repeating-linear-gradient(100deg, transparent 0 140px, rgba(255,255,255,0.05) 140px 146px); background-size: 400px 100%; animation: veilWind 0.9s linear infinite; }
+.v-iron    { box-shadow: inset 0 0 200px 60px rgba(110, 130, 165, 0.6); background: linear-gradient(180deg, rgba(150,170,200,0.12), transparent 40%); }
+.v-bone    { box-shadow: inset 0 0 200px 60px rgba(120, 200, 255, 0.5); background: radial-gradient(ellipse at 50% 120%, rgba(200, 235, 255, 0.18), transparent 60%); }
+.v-horde   { box-shadow: inset 0 0 220px 70px rgba(130, 40, 220, 0.55); animation: veilPulse 1.6s ease-in-out infinite; }
+.v-rot     { box-shadow: inset 0 0 220px 60px rgba(70, 180, 30, 0.5); background: radial-gradient(ellipse at 50% 110%, rgba(90, 200, 40, 0.2), transparent 55%); }
+.v-mist    { background: rgba(232, 236, 246, 0.2); box-shadow: inset 0 0 260px 110px rgba(238, 241, 250, 0.75); }
+.v-rift    { box-shadow: inset 0 0 220px 60px rgba(140, 50, 255, 0.55); animation: veilRift 2.4s steps(1) infinite; }
+.v-starry  { box-shadow: inset 0 0 200px 50px rgba(90, 130, 255, 0.45); background: linear-gradient(180deg, rgba(30, 50, 150, 0.32), transparent 45%); }
+.v-tail    { box-shadow: inset 0 0 180px 50px rgba(110, 240, 150, 0.42); background: repeating-linear-gradient(100deg, transparent 0 160px, rgba(160,255,190,0.05) 160px 166px); background-size: 400px 100%; animation: veilWind 1.2s linear infinite; }
+.v-mire    { box-shadow: inset 0 0 220px 70px rgba(100, 70, 30, 0.6); background: radial-gradient(ellipse at 50% 120%, rgba(110, 80, 40, 0.25), transparent 55%); }
+.v-frost   { box-shadow: inset 0 0 240px 80px rgba(170, 225, 255, 0.65); background: radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(220, 245, 255, 0.25)); }
+.v-moon    { box-shadow: inset 0 0 200px 50px rgba(255, 225, 150, 0.4); background: radial-gradient(circle at 82% 8%, rgba(255, 245, 200, 0.55), rgba(255, 230, 160, 0.15) 12%, transparent 35%); }
+.v-gold    { box-shadow: inset 0 0 200px 55px rgba(255, 195, 50, 0.45); }
+.v-eclipse { background: radial-gradient(circle at 50% 4%, rgba(255, 140, 40, 0.35), transparent 30%), rgba(15, 5, 30, 0.28); box-shadow: inset 0 0 260px 100px rgba(0, 0, 0, 0.7); }
+.v-storm   { background: rgba(15, 25, 60, 0.3); box-shadow: inset 0 0 240px 80px rgba(5, 15, 45, 0.7); overflow: hidden; }
+.v-storm::after { content: ""; position: absolute; inset: -100px 0 0 0; background: repeating-linear-gradient(105deg, transparent 0 22px, rgba(190, 220, 255, 0.13) 22px 23px); background-size: 100% 200px; animation: veilRain 0.35s linear infinite; }
+.v-aurora  { background: linear-gradient(180deg, rgba(90, 255, 190, 0.28), rgba(170, 90, 255, 0.18) 22%, transparent 48%); background-size: 200% 100%; animation: veilAurora 6s ease-in-out infinite alternate; box-shadow: inset 0 0 180px 40px rgba(110, 255, 210, 0.3); }
+.v-frenzy  { box-shadow: inset 0 0 220px 70px rgba(255, 90, 20, 0.55); animation: veilPulse 0.9s ease-in-out infinite; }
+@keyframes veilPulse { 50% { filter: brightness(1.35); } }
+@keyframes veilWind { to { background-position: 400px 0; } }
+@keyframes veilRain { to { background-position: 0 200px; } }
+@keyframes veilAurora { to { background-position: 100% 0; filter: hue-rotate(40deg); } }
+@keyframes veilRift { 0%, 100% { filter: none; } 46% { filter: hue-rotate(-50deg) brightness(1.6); } 49% { filter: none; } 80% { filter: hue-rotate(40deg) brightness(1.3); } 82% { filter: none; } }
+body.on-title #omen-veils, body.on-title #omen-reveal { display: none !important; }
+
+/* 天象：屏幕中央揭示 */
+#omen-reveal { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+  background: radial-gradient(ellipse at center, rgba(10, 5, 25, 0.72), rgba(10, 5, 25, 0.35) 60%, transparent 85%); }
+#omen-reveal[hidden] { display: none; }
+#omen-reveal.show { animation: orIn 0.5s ease both; }
+#omen-reveal.out { animation: orOut 0.45s ease forwards; }
+.or-head { font-family: "ZCOOL XiaoWei", serif; font-size: 22px; letter-spacing: 12px; color: #fff; opacity: 0.85; text-shadow: 0 0 12px rgba(255,255,255,0.6); }
+.or-sub { font-size: 14px; color: var(--dim); margin: 4px 0 22px; letter-spacing: 4px; }
+.or-cards { display: flex; gap: 28px; flex-wrap: wrap; justify-content: center; padding: 0 16px; }
+.or-card { width: 260px; padding: 22px 20px 20px; border-radius: 20px; text-align: center; position: relative;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 22%, rgba(25, 15, 50, 0.92)), rgba(20, 12, 40, 0.94));
+  border: 2px solid var(--c); box-shadow: 0 0 40px color-mix(in srgb, var(--c) 55%, transparent), inset 0 0 30px color-mix(in srgb, var(--c) 18%, transparent);
+  animation: orCard 0.7s cubic-bezier(.2, 1.4, .4, 1) both; }
+.or-icon { position: relative; width: 104px; height: 104px; margin: 0 auto 10px; display: grid; place-items: center; }
+.or-icon span { position: relative; font-size: 64px; filter: drop-shadow(0 0 14px var(--c)); animation: orFloat 2.2s ease-in-out infinite; }
+.or-icon i { position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent, var(--c), transparent 40%, var(--c), transparent 80%); opacity: 0.7;
+  -webkit-mask: radial-gradient(circle, transparent 56%, #000 58%, #000 66%, transparent 68%); mask: radial-gradient(circle, transparent 56%, #000 58%, #000 66%, transparent 68%);
+  animation: orSpin 3s linear infinite; }
+.or-icon::before { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--c) 45%, transparent), transparent 70%); }
+.or-kind { display: inline-block; font-size: 13px; padding: 2px 10px; border-radius: 8px; color: #fff; margin-bottom: 6px; background: var(--c); color: #1a1030; font-weight: bold; }
+.or-name { font-family: "ZCOOL XiaoWei", serif; font-size: 44px; color: var(--c); text-shadow: 0 0 18px var(--c), 0 3px 0 rgba(0,0,0,0.5); line-height: 1.15; }
+.or-desc { margin-top: 10px; font-size: 15px; line-height: 1.55; color: #f2ecff; }
+.or-hint { margin-top: 22px; font-size: 13px; color: var(--dim); text-shadow: 0 1px 3px #000; }
+@keyframes orIn { from { opacity: 0; } }
+@keyframes orOut { to { opacity: 0; transform: scale(1.04); } }
+@keyframes orCard { from { opacity: 0; transform: scale(1.5); filter: blur(8px); } }
+@keyframes orSpin { to { transform: rotate(360deg); } }
+@keyframes orFloat { 50% { transform: translateY(-6px) scale(1.06); } }
+
+.ftext.bolttxt { color: #dff4ff; font-size: 20px; font-weight: bold; text-shadow: 0 0 8px #4da8ff, 0 0 2px #000; }
+.ftext.goldtxt.big { font-size: 19px; text-shadow: 0 0 8px #ffb020, 0 0 2px #000; }
+.wp-omens .omen { animation: omenGlow 2s ease-in-out infinite; }
+@keyframes omenGlow { 50% { filter: brightness(1.25); } }
