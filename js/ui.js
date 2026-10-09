@@ -111,12 +111,14 @@
   function buildHero() {
     const H = G.HERO;
     $('#hero-panel').innerHTML = `
-      <div class="portrait" id="hero-portrait" data-tip="tip:hero">${UI.ic('assets/portraits/luna.png', '🧚', 'big')}<span class="lv" id="hero-lv">Lv1</span></div>
-      <div class="hero-info"><div class="hname">${H.name}<small>${H.title}</small></div><div class="xp"><i id="hero-xp"></i></div>
-        <div class="skills">
-          <button class="skill" id="sk-q" data-tip="tip:q">${UI.ic('assets/icons/skill_starfall.png', H.skills.q.icon)}<kbd>Q</kbd><div class="cdmask"></div><span class="cdt"></span></button>
-          <button class="skill" id="sk-e" data-tip="tip:e">${UI.ic('assets/icons/skill_bloom.png', H.skills.e.icon)}<kbd>E</kbd><div class="cdmask"></div><span class="cdt"></span></button>
-        </div></div>`;
+      <div class="hero-face">
+        <div class="portrait" id="hero-portrait" data-tip="tip:hero">${UI.ic('assets/portraits/luna.png', '🧚', 'big')}<span class="lv" id="hero-lv">Lv1</span></div>
+        <div class="xp"><i id="hero-xp"></i></div>
+      </div>
+      <div class="skills">
+        <button class="skill" id="sk-q" data-tip="tip:q">${UI.ic('assets/icons/skill_starfall.png', H.skills.q.icon)}<kbd>Q</kbd><div class="cdmask"></div><span class="cdt"></span></button>
+        <button class="skill" id="sk-e" data-tip="tip:e">${UI.ic('assets/icons/skill_bloom.png', H.skills.e.icon)}<kbd>E</kbd><div class="cdmask"></div><span class="cdt"></span></button>
+      </div>`;
     $('#sk-q').onclick = () => skillQ();
     $('#sk-e').onclick = () => G.Hero.castBloom();
     $('#hero-portrait').onclick = () => { const p = G.Hero.pos; G.cam.target.set(p.x, 0, p.z); };
@@ -292,7 +294,7 @@
   function tipHtml(key) {
     if (key === 'tip:raise') return `<h4>⛰️ 隆起地块 <kbd>Z</kbd></h4><p>花费 1 地脉能量，把地块抬高一级（最高 3 级）。</p><p>· 高于地面的地块<b>会挡住敌人</b>，可以用来规划敌人的路线。<br>· 塔只能建在高地上。<br>· 2 级、3 级高地上的塔获得<b>射程和伤害加成</b>。<br>· 按住左键拖动可以连续隆起。<br>· 只能在备战阶段使用，不能完全堵死道路。</p>`;
     if (key === 'tip:lower') return `<h4>⛏️ 削低地块 <kbd>X</kbd></h4><p>花费 1 地脉能量，把地块降低一级。降到地面后敌人又能从这里通过。</p>`;
-    if (key === 'tip:hero') return `<h4>🧚 月之仙子 · 露娜</h4><p>会自动攻击附近的敌人，包括飞行单位。<br><b>右键</b>点击地图可以让她飞过去。每次击杀都会给她经验，最高 5 级。<br>点击头像可以把镜头移到她身上。</p>`;
+    if (key === 'tip:hero') return `<h4>🧚 月之仙子 · 露娜 <small class="dim">Lv${G.Hero.lvl}</small></h4><p>会自动攻击附近的敌人，包括飞行单位。<br><b>右键</b>点击地图可以让她飞过去。每次击杀都会给她经验，最高 5 级。<br>点击头像可以把镜头移到她身上。</p>`;
     if (key === 'tip:q' || key === 'tip:e') {
       const k = key.slice(4), sk = G.HERO.skills[k];
       return `<h4>${sk.icon} ${sk.name} <kbd>${k.toUpperCase()}</kbd></h4><p>${sk.desc}</p><p class="dim">冷却 ${fmt(sk.cd * G.Hero.cdMul())} 秒${k === 'q' ? '　·　按 Q 后左键点击目标位置' : ''}</p>`;

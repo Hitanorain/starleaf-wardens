@@ -79,8 +79,11 @@ button.danger:hover { background: rgba(255, 90, 90, 0.3); }
 .disabled { opacity: 0.45; filter: grayscale(0.6); }
 
 /* 建造栏 */
-#build-bar {
+#dock {
   position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 8px; align-items: stretch;
+}
+#build-bar {
   display: flex; gap: 6px; align-items: stretch; padding: 8px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
   box-shadow: 0 6px 24px rgba(30, 10, 60, 0.35);
@@ -104,24 +107,26 @@ button.danger:hover { background: rgba(255, 90, 90, 0.3); }
 
 /* 英雄 */
 #hero-panel {
-  position: absolute; bottom: 12px; left: 14px; display: flex; gap: 10px; align-items: center; padding: 10px;
+  display: flex; gap: 8px; align-items: center; padding: 8px 10px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 6px 24px rgba(30, 10, 60, 0.35);
 }
+.hero-face { display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .portrait {
-  position: relative; width: 76px; height: 76px; border-radius: 50%; overflow: hidden; cursor: pointer;
+  position: relative; width: 62px; height: 62px; border-radius: 50%; overflow: hidden; cursor: pointer;
   display: grid; place-items: center;
   background: radial-gradient(circle at 50% 35%, #fff6ff, #c9b4ff 55%, #6f5fbf);
   border: 2px solid var(--gold); box-shadow: 0 0 18px rgba(200, 180, 255, 0.6);
 }
-.portrait .ic.big { width: 76px; height: 76px; }
+.portrait .ic.big { width: 62px; height: 62px; }
 .portrait .ic img { object-fit: cover; }
 .portrait .lv { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: bold; padding: 1px 6px; border-radius: 8px; background: #3a2b6a; color: var(--gold); }
 .hname { font-family: "ZCOOL XiaoWei", serif; font-size: 20px; color: var(--gold); }
 .hname small { font-family: "Microsoft YaHei", sans-serif; font-size: 12px; color: var(--dim); margin-left: 6px; }
-.xp { width: 110px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.12); margin: 4px 0 8px; overflow: hidden; }
+.xp { width: 58px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.12); overflow: hidden; }
 .xp i { display: block; height: 100%; background: linear-gradient(90deg, #9ff4ff, #fff27a); }
 .skills { display: flex; gap: 8px; }
-.skill { position: relative; width: 50px; height: 50px; border-radius: 12px; overflow: hidden; display: grid; place-items: center;
+.skill { position: relative; width: 60px; height: 60px; border-radius: 12px; overflow: hidden; display: grid; place-items: center;
   background: radial-gradient(circle, #5a4aa8, #2a2058); border: 1px solid rgba(255,255,255,0.25); }
 .skill.ready { border-color: var(--gold); box-shadow: 0 0 10px rgba(255, 224, 138, 0.5); }
 .skill.active { box-shadow: 0 0 0 2px #fff27a, 0 0 18px #fff27a; }
@@ -251,7 +256,7 @@ h1 { font-family: "ZCOOL XiaoWei", serif; font-size: 64px; margin: 0; color: #ff
 
 /* 地形手牌 */
 #hand-bar {
-  position: absolute; bottom: 104px; left: 50%; transform: translateX(-50%);
+  position: absolute; bottom: 122px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 6px; align-items: stretch; padding: 6px 8px;
   background: rgba(28, 24, 52, 0.7); border: 1px solid var(--line); border-radius: 14px;
 }
@@ -309,7 +314,7 @@ body.desert .rmap i { background: #d9b48c; }
 
 
 /* ================= 标题画面（上方主视觉 + 横向菜单，下方 3D 预览） ================= */
-body.on-title #hud-top, body.on-title #hand-bar, body.on-title #build-bar, body.on-title #hero-panel,
+body.on-title #hud-top, body.on-title #hand-bar, body.on-title #dock,
 body.on-title #wave-panel, body.on-title #tower-panel, body.on-title #region-panel, body.on-title #overlay { display: none !important; }
 #screen-title { position: absolute; inset: 0; display: block; pointer-events: none; overflow: hidden; }
 #screen-title[hidden] { display: none; }
