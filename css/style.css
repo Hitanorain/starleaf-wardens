@@ -565,3 +565,15 @@ body.on-title #omen-veils, body.on-title #omen-reveal { display: none !important
 #screen-flash.go { animation: nuke-flash 1.1s ease-out; }
 @keyframes nuke-flash { 0% { opacity: 0; } 8% { opacity: .85; } 100% { opacity: 0; } }
 .wp-list .chip.boss { border-color: rgba(255, 123, 224, 0.6); box-shadow: 0 0 8px rgba(255, 79, 216, 0.35); }
+
+/* ---------- 模式选择（标题） ---------- */
+.modes-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.modes-pick button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 7px 9px; border-radius: 10px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); color: var(--dim); text-align: left; cursor: pointer; }
+.modes-pick button b { font-size: 13px; color: var(--text); font-weight: normal; }
+.modes-pick button small { font-size: 11px; opacity: .85; white-space: nowrap; }
+.modes-pick button.on { background: rgba(255, 224, 138, 0.16); border-color: var(--gold); box-shadow: 0 0 10px rgba(255, 224, 138, 0.25); }
+.modes-pick button.on b { color: var(--gold); }
+.wp-title .tag.boss { background: rgba(255, 79, 216, 0.25); color: #ffc8f4; }
+.hb.elite { box-shadow: 0 0 0 1px #ffd76a, 0 0 6px rgba(255, 215, 106, 0.8); }
+#end-sub .good { color: var(--gold); }

@@ -15,7 +15,8 @@
       phase: 'prep', wave: 0, gold: CFG.START_GOLD, ley: CFG.START_LEY, lives: CFG.START_LIVES,
       speed: 1, paused: false, time: 0,
       enemies: [], towers: [], projectiles: [], queue: [], waveTime: 0, undo: [], selected: null,
-      stats: { kills: 0, leaks: 0, built: 0, lost: 0 }, nukeUses: 0, nukeCd: 0, taken: new Set(), portalCounter: 0,
+      stats: { kills: 0, leaks: 0, built: 0, lost: 0 }, nukeUses: 0, nukeCd: 0,
+      endless: false, roundCache: {}, nextRoundT: 0, record: null, taken: new Set(), portalCounter: 0,
       hand: [], expandTokens: 0, offers: null, rng: Math.random,
       omens: [], om: Object.assign({}, G.OMEN_DEFAULT), purged: false, seenOmen: false, lastOmens: [], boltT: 0,
       mods: {
@@ -53,7 +54,7 @@
       const d = this.def = G.ENEMIES[type];
       this.type = type;
       const om = S.om;
-      const hm = d.boss ? 1 : G.hpMul(S.wave) * om.hp * CFG.ENEMY_HP;
+      const hm = d.boss ? G.bossHpMul(S.wave) : G.hpMulAt(S.wave) * om.hp * CFG.ENEMY_HP;
       this.maxHp = this.hp = Math.round(d.hp * hm);
       this.maxShield = this.shield = Math.round((d.shield || 0) * hm * om.shieldMul) + (d.boss ? 0 : Math.round(this.maxHp * om.shieldPct));
       this.armor = om.noArmor ? 0 : Math.min(0.75, Math.max(d.armor, d.armor + om.armor));
@@ -166,6 +167,21 @@
       }
       if (dt > 0) this.vel.set((this.pos.x - ox) / dt, 0, (this.pos.z - oz) / dt);
       this.place(dt);
+    }
+    // 精英怪（无尽模式）：体型更大、生命 ×3、护甲 +10%，身上一圈金色光环，击杀金叶 ×3
+    makeElite() {
+      this.elite = true;
+      this.maxHp = this.hp = this.maxHp * 3;
+      this.maxShield = this.shield = this.shield * 2;
+      this.armor = Math.min(0.75, this.armor + 0.1);
+      this.scale *= 1.3;
+      this.m.group.scale.setScalar(this.scale);
+      this.baseEm = this.baseEm.clone().add(ELITE);
+      for (const m of this.m.mats) m.emissive.copy(this.baseEm);
+      const halo = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.3, 24), M.glow(0xffd76a, 0.75, true, 1.6));
+      halo.rotation.x = -Math.PI / 2; halo.position.y = this.fly ? -0.3 : 0.03;
+      this.m.group.add(halo);
+      this.hb.classList.add('elite');
     }
     // 当前应有的自发光色：冻伤时偏冰蓝，否则是天象染色
     tint(chilled = this.chillT > 0 || this.frozenT > 0) { return chilled ? CHILL : this.baseEm; }
@@ -286,7 +302,7 @@
     }
     kill() {
       if (this.dead) return;
-      const gold = Math.max(1, Math.round(this.def.gold * (this.def.boss ? 1 : CFG.ENEMY_GOLD) * G.goldMul(S.wave) * S.mods.killGold * S.om.gold));
+      const gold = Math.max(1, Math.round(this.def.gold * (this.def.boss ? 1 : CFG.ENEMY_GOLD) * G.goldMulAt(S.wave) * S.mods.killGold * S.om.gold * (this.elite ? 3 : 1)));
       S.gold += gold;
       S.stats.kills++;
       A.play('die');
@@ -308,6 +324,12 @@
   }
   G.Enemy = Enemy;
   const CHILL = new THREE.Color(0x14385f).convertSRGBToLinear();
+  const ELITE = new THREE.Color(0x3a2a00).convertSRGBToLinear();
+  // 按模式取生命 / 金叶倍率（守护模式 10 波曲线 / 无尽模式不封顶曲线）
+  G.hpMulAt = w => S.endless ? G.Endless.hpMul(w) : G.hpMul(w);
+  G.goldMulAt = w => S.endless ? G.Endless.goldMul(w) : G.goldMul(w);
+  G.bossHpMul = w => S.endless ? G.Endless.bossMul(w) : 1;
+  G.waveGroups = n => S.endless ? G.Endless.groups(n) : G.WAVES[n - 1];
   function nearestTower(p, range) {
     let best = null, bd = range;
     for (const t of S.towers) { const d = hyp(t.pos.x, t.pos.z, p.x, p.z); if (d < bd) { bd = d; best = t; } }
@@ -919,8 +941,18 @@
     S.phase = 'combat';
     S.waveTime = 0;
     S.undo = [];
-    const groups = G.WAVES[S.wave - 1];
+    const groups = G.waveGroups(S.wave);
+    const q = G.queueGroups(groups);
+    S.queue = q;
+    S.waveTotal = q.length;
+    S.boltT = S.om.bolt;
+    A.play('wave');
+    G.waveStartFx(groups);
+  };
+  // 把一波的出兵组展开成按时间排序的队列（无尽模式下精英怪也在这里决定）
+  G.queueGroups = function (groups) {
     const active = Wd.portals.filter(p => p.openWave <= S.wave);
+    const elite = S.endless ? G.Endless.eliteChance(S.wave) : 0;
     const q = [];
     for (const [type, count0, interval0, delay] of groups) {
       const boss = G.ENEMIES[type].boss;
@@ -932,18 +964,17 @@
         let portal;
         if (G.ENEMIES[type].boss) portal = active[0];
         else portal = active[(S.portalCounter++) % active.length];
-        q.push({ t: delay + i * interval, type, portal });
+        q.push({ t: delay + i * interval, type, portal, elite: !boss && Math.random() < elite });
       }
     }
     q.sort((a, b) => a.t - b.t);
-    S.queue = q;
-    S.waveTotal = q.length;
-    S.boltT = S.om.bolt;
-    A.play('wave');
+    return q;
+  };
+  G.waveStartFx = function (groups) {
     const omenLine = S.omens.length ? '<br>' + S.omens.map(id => { const o = G.omen(id); return o.icon + ' ' + o.name; }).join('　') : '';
     const newPortal = Wd.portals.find(p => p.openWave === S.wave && S.wave > 1);
     if (newPortal) { A.play('portal'); G.UI.banner(`${newPortal.name}已开启！`, '敌人将从两个方向进攻' + omenLine); }
-    else G.UI.banner(`第 ${S.wave} 波`, G.waveSummary(groups).map(([t, n]) => G.ENEMIES[t].name + ' ×' + n).join('　') + omenLine);
+    else G.UI.banner(`第 ${S.wave} ${S.endless ? '轮' : '波'}`, G.waveSummary(groups).map(([t, n]) => G.ENEMIES[t].name + ' ×' + n).join('　') + omenLine);
     const boss = groups.some(g => G.ENEMIES[g[0]].boss);
     if (boss) setTimeout(() => G.UI.toast('⚠ Boss 来袭！', 'warn'), 1500);
     G.Music.setIntensity(boss ? 2 : 1);   // 配乐进入战斗版（Boss 波更激烈）
@@ -955,7 +986,9 @@
     while (S.queue.length && S.queue[0].t <= S.waveTime) {
       const s = S.queue.shift();
       const tile = Wd.get(s.portal.x, s.portal.y);
-      S.enemies.push(new Enemy(s.type, tile));
+      const e = new Enemy(s.type, tile);
+      if (s.elite) e.makeElite();
+      S.enemies.push(e);
       FX.emit(V().set(tile.wx, 0.5, tile.wz), 8, 0xb04dff, 1.2, 0.5);
     }
     if (S.om.bolt > 0) {   // 雷暴：定时落雷
@@ -965,24 +998,29 @@
         if (alive.length) { G.lightning(alive[Math.floor(Math.random() * alive.length)]); S.boltT = S.om.bolt; }
       }
     }
+    if (S.endless && G.Endless.update(dt)) return;   // 无尽模式：一轮出完就接着下一轮
     if (!S.queue.length && !S.enemies.some(e => !e.dead)) G.waveCleared();
   };
   G.waveCleared = function () {
-    const crystals = Wd.tiles.filter(t => t.type === 'crystal' && !t.locked).length;
-    const bonus = 30 + 9 * S.wave + crystals * 25;   // 每波更长，奖励也更多
-    const ley = CFG.LEY_PER_WAVE + S.mods.leyBonus + crystals * 2;
-    S.gold += bonus; S.ley += ley;
+    let bonus, ley, drawn;
+    if (S.endless) ({ bonus, ley, drawn } = G.Endless.restRewards());
+    else {
+      const crystals = Wd.tiles.filter(t => t.type === 'crystal' && !t.locked).length;
+      bonus = 30 + 9 * S.wave + crystals * 25;   // 每波更长，奖励也更多
+      ley = CFG.LEY_PER_WAVE + S.mods.leyBonus + crystals * 2;
+      S.gold += bonus; S.ley += ley;
+      drawn = G.drawPieces(CFG.DRAW_PER_WAVE);
+      if (S.wave % CFG.EXPAND_EVERY === 0 && S.wave < G.WAVES.length) { S.expandTokens++; S.offers = null; }
+    }
     // 塔在波次间隙自动修复一部分
     for (const t of S.towers) if (t.heal(CFG.TOWER_HEAL) > 0) FX.emit(V().set(t.pos.x, Wd.top(t.tile) + 0.5, t.pos.z), 8, 0x8dffa8, 1, 0.6, 0.8, -0.3, 0.3);
-    const drawn = G.drawPieces(CFG.DRAW_PER_WAVE);
-    if (S.wave % CFG.EXPAND_EVERY === 0 && S.wave < G.WAVES.length) { S.expandTokens++; S.offers = null; }
     A.play('clear');
     G.Music.setIntensity(0);
     for (const p of S.projectiles) p.remove();
     S.projectiles = [];
-    if (S.wave >= G.WAVES.length) { G.endGame(true); return; }
+    if (!S.endless && S.wave >= G.WAVES.length) { G.endGame(true); return; }
     S.phase = 'blessing';
-    G.UI.toast(`第 ${S.wave} 波完成！+${bonus} 金叶　+${ley} 地脉能量　+${drawn} 张地形块`, 'good');
+    G.UI.toast(`${S.endless ? `第 ${S.wave} 轮完成，休整！` : `第 ${S.wave} 波完成！`}+${bonus} 金叶　+${ley} 地脉能量　+${drawn} 张地形块`, 'good');
     G.UI.showBlessings(G.pickBlessings());
   };
   G.pickBlessings = function () {
@@ -996,11 +1034,12 @@
     if (!b.repeat) S.taken.add(b.id);
     A.play('bless');
     S.phase = 'prep';
-    G.rollOmens(S.wave + 1);
+    if (S.endless) G.Endless.rollOmens(Math.ceil((S.wave + 1) / G.Endless.REST_EVERY));
+    else G.rollOmens(S.wave + 1);
     Wd.recompute();
     if (S.expandTokens > 0) setTimeout(() => G.UI.toast(`🗺 获得区域扩张机会（${S.expandTokens}）——点击右上角「区域扩张」`, 'good'), 600);
-    const portalNews = S.wave + 1 === CFG.PORTAL_B_WAVE;
-    if (S.omens.length) setTimeout(() => { if (S.phase !== 'prep') return; G.OmenFX.reveal(S.seenOmen ? '天象降临' : '天象初现', `第 ${S.wave + 1} 波`); S.seenOmen = true; }, portalNews ? 3000 : 350);
+    const portalNews = !S.endless && S.wave + 1 === CFG.PORTAL_B_WAVE;
+    if (S.omens.length) setTimeout(() => { if (S.phase !== 'prep') return; G.OmenFX.reveal(S.seenOmen ? '天象降临' : '天象初现', S.endless ? `第 ${S.wave + 1}～${S.wave + G.Endless.REST_EVERY} 轮` : `第 ${S.wave + 1} 波`); S.seenOmen = true; }, portalNews ? 3000 : 350);
     if (portalNews) {
       const p = Wd.portals[1];
       G.UI.banner(`${p.name}正在苏醒……`, '下一波开始，敌人会从两个方向进攻。紫色虚线是它们的路线');
@@ -1067,6 +1106,7 @@
   G.endGame = function (win) {
     if (S.phase === 'over' || S.phase === 'win') return;
     S.phase = win ? 'win' : 'over';
+    if (S.endless) S.record = G.Endless.saveBest();
     G.Music.setIntensity(0);
     A.play(win ? 'clear' : 'lose');
     G.UI.showEnd(win);

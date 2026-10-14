@@ -96,7 +96,17 @@
   G.FX.init(scene);
   G.shake = a => { G.cam.shake = Math.max(G.cam.shake, a); };
 
+  // 模式：campaign 守护模式（10 波，从中央 3×3 区域开始扩张）/ endless 无尽模式（整张地图全部开拓）
+  G.mode = 'campaign';
+  try { if (localStorage.getItem('starleaf.mode') === 'endless') G.mode = 'endless'; } catch (e) { /* 忽略 */ }
+  G.setMode = function (m) {
+    G.mode = m;
+    try { localStorage.setItem('starleaf.mode', m); } catch (e) { /* 忽略 */ }
+  };
   G.newMap = function (seed, biome) {
+    const endless = G.mode === 'endless';
+    CFG.START_REGIONS = endless ? [0, CFG.RX - 1, 0, CFG.RY - 1] : [2, 4, 1, 3];
+    CFG.PORTAL_B_WAVE = endless ? 3 : 4;
     G.applyBiome(biome || G.biome || 'forest');
     G.newState();
     Wd.gen(seed);
@@ -161,9 +171,13 @@
     G.cam.pitch = 1.22; G.cam.pitchGoal = 0.98;
     G.cam.dist = G.cam.goal.dist * 1.55; G.cam.goal.slow = true;
     G.startRun();
+    if (G.mode === 'endless') G.Endless.setupRun();
     G.UI.refresh();
     G.Guide.start();
-    G.UI.banner('备战阶段', '用下方的地形块搭出高地、拉长敌人路线，再在高地上建塔。准备好后按 空格 开战');
+    if (G.mode === 'endless') {
+      const best = G.Endless.best();
+      G.UI.banner('无尽模式 · 永夜守望', `整片大地已经开拓，敌人会一轮接一轮地涌来，每 ${G.Endless.REST_EVERY} 轮休整一次。${best ? `最高纪录：第 ${best.round} 轮` : '坚持得越久越好！'}`);
+    } else G.UI.banner('备战阶段', '用下方的地形块搭出高地、拉长敌人路线，再在高地上建塔。准备好后按 空格 开战');
     setTimeout(() => { if (S.wave === 0) G.UI.toast('提示：右键点击地图可以让露娜飞过去', ''); }, 4500);
   };
 
@@ -199,6 +213,7 @@
   G.newMap(G.UI.seed, 'forest');
   G.UI.init();
   G.UI.drawBiomes();
+  G.UI.drawModes();
 
   let last = performance.now(), time = 0;
   function loop(now) {

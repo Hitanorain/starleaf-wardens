@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=20">
+<link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body>
 <div id="app">
@@ -65,6 +65,10 @@
           <div class="biomes" id="biomes"></div>
         </div>
         <div class="tactions">
+          <div class="modes-pick" id="modes">
+            <button data-mode="campaign"><b>🛡 守护模式</b><small>10 波 · 扩张领地</small></button>
+            <button data-mode="endless"><b>♾ 无尽模式</b><small id="mode-best">满图 · 没有尽头</small></button>
+          </div>
           <button id="title-start" class="cta">开始守护</button>
           <button id="title-reroll" class="ghost">🎲 换一个布局 <small>#<span id="seed"></span></small></button>
           <button id="title-help" class="ghost">❔ 玩法与操作</button>
@@ -130,6 +134,7 @@
         <li>敌人沿最短路线走向古树；地势 ≥1 的地块不能通行。地面上的金色光点就是它们的路线。</li>
         <li>不能把路完全堵死。紫色光点是还没开启的传送门（第 4 波开启）的路线。</li>
         <li>塔建在 2 级高地：射程 +20%、伤害 +15%；3 级高地：射程 +40%、伤害 +30%。</li>
+        <li><b>无尽模式</b>：整张地图一开始就全部开拓，敌人一轮接一轮不停地来，每 5 轮是 Boss 轮，打完后才能休整（改地形、选祝福）。第 8 轮起会出现血量 ×3 的金色精英怪。看你能坚持到第几轮！</li>
         <li>塔有生命和护甲：投石地精、熔岩巨像会攻击塔，生命归零塔就会被摧毁。选中塔可以花金叶修理，每波结束也会自动修复一部分。</li>
         <li>迷雾萨满会降低附近塔的攻速，噤声精怪会让塔暂时无法攻击——优先消灭它们。</li>
         <li>魔法伤害无视护甲，对护盾造成双倍伤害；蝙蝠会飞，只有弓手塔、方尖碑和露娜能打到它们。</li>
@@ -147,18 +152,19 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="js/config.js?v=20"></script>
-<script src="js/models.js?v=20"></script>
-<script src="js/audio.js?v=20"></script>
-<script src="js/music.js?v=20"></script>
-<script src="js/fx.js?v=20"></script>
-<script src="js/terrain.js?v=20"></script>
-<script src="js/grass.js?v=20"></script>
-<script src="js/world.js?v=20"></script>
-<script src="js/game.js?v=20"></script>
-<script src="js/omenfx.js?v=20"></script>
-<script src="js/guide.js?v=20"></script>
-<script src="js/ui.js?v=20"></script>
-<script src="js/main.js?v=20"></script>
+<script src="js/config.js?v=21"></script>
+<script src="js/models.js?v=21"></script>
+<script src="js/audio.js?v=21"></script>
+<script src="js/music.js?v=21"></script>
+<script src="js/fx.js?v=21"></script>
+<script src="js/terrain.js?v=21"></script>
+<script src="js/grass.js?v=21"></script>
+<script src="js/world.js?v=21"></script>
+<script src="js/game.js?v=21"></script>
+<script src="js/endless.js?v=21"></script>
+<script src="js/omenfx.js?v=21"></script>
+<script src="js/guide.js?v=21"></script>
+<script src="js/ui.js?v=21"></script>
+<script src="js/main.js?v=21"></script>
 </body>
 </html>

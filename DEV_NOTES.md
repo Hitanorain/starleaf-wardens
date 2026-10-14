@@ -28,6 +28,7 @@
 | `js/grass.js` | `G.Grass`：风吹草地（实例化草簇，风在顶点着色器里算）+ 云影（`Grass.cloudify(材质)` 给地面材质打补丁） |
 | `js/world.js` | `G.World`：地块数据、区域/开拓、传送门定位、寻路距离场、敌人路线光点、地块模型（树/岩石/水晶） |
 | `js/game.js` | `G.S` 游戏状态；`Enemy` / `Tower` / `Proj` 类；英雄 `G.Hero`；波次；玩家操作 `G.act.*`；手牌与区域扩张逻辑 |
+| `js/endless.js` | `G.Endless`：无尽模式（满图开局、按轮持续出兵、每 5 轮休整、精英怪、最高纪录） |
 | `js/omenfx.js` | `G.OmenFX`：天象的表现层——屏幕中央揭示卡片、全屏色调（`.veil.v-*`）、战场氛围粒子 / 风 / 雨 / 雾 / 极光、敌人着色、落雷 `G.lightning`。包装了 `G.update` 每帧驱动 |
 | `js/guide.js` | `G.Guide`：左上角 ✦ 操作指引（新的一局开始时 `Guide.start()`，按游戏状态自动推进，做完淡出） |
 | `js/ui.js` | `G.UI`：HUD、建造栏、手牌栏、扩张面板、塔面板、提示框、标题画面交互、鼠标键盘输入、悬停预览 |
@@ -99,6 +100,13 @@
 - **冰冻**：`enemy.freeze(dur)` 罩上 `M.iceBlock()` 并设置 `stunT`；Boss 只冻 30%；解冻后 `thawT` 1.6 秒内免疫。`chillT`（霜铃塔减速）期间身体泛冰蓝（`CHILL` 自发光色）。霜铃塔 3 级的"寒蚀"通过 `brittle / brittleT` 在 `G.damage` 里降低物理护甲。
 - **星核坠击** `G.NUKE`：`G.act.nuke(p)` 扣金叶（每用一次涨价 `costUp`）、进入冷却，1.6 秒后 `G.nukeImpact()` 落地。界面上是露娜技能旁的 ☄️ 按钮，快捷键 G，`UI.tool = 'cast:nuke'`。
 - 平衡用控制台机器人测过（自动摆地形、建塔、开战）：结果随地图和随机事件波动很大，大部分能通关、有时在第 3~5 波被蝙蝠打穿；之后以真人试玩反馈为准再调。
+
+## 6.6 无尽模式（`endless.js`）
+- 标题界面选择模式，`G.mode = 'campaign' | 'endless'`（存 localStorage）。`G.newMap` 按模式设置 `CFG.START_REGIONS`（无尽：全部 7×5 区域）和 `CFG.PORTAL_B_WAVE`（无尽：第 3 轮）。开局 `G.Endless.setupRun()`：`S.endless = true`、400 金叶、16 地脉、手牌补满、没有区域扩张。
+- `S.wave` 在无尽模式里就是"轮数"。`G.waveGroups(n)` 按模式取出兵组（无尽：`Endless.groups(r)`，2 段随机进攻，按轮缓存，备战面板的预告与实际一致）；`G.queueGroups()` 把出兵组展开成队列（无尽模式在这里抽精英怪）。
+- 连续出兵：`G.updateWave` 先调用 `Endless.update(dt)`——一轮的队列出完后倒数 `GAP` 秒直接 `nextRound()`（场上敌人保留），不会进入备战。每 `REST_EVERY`（5）轮是 Boss 轮，打完并清场后走正常的 `waveCleared()` → 祝福 → 备战（`Endless.restRewards()` 给更多奖励），天象每段重新抽。
+- 成长曲线：`Endless.hpMul / goldMul / countMul / bossMul / eliteChance`；`G.hpMulAt(w) / goldMulAt / bossHpMul` 按模式取倍率。精英怪 `enemy.makeElite()`：生命 ×3、护甲 +10%、金色光环、金叶 ×3。
+- 结束时 `Endless.saveBest()` 按地图记录最高轮数（`starleaf.endlessBest`），结算画面显示是否破纪录。
 
 ## 7. 界面
 - 当前工具是一个字符串 `UI.tool`：`raise` / `lower` / `tower:<type>` / `piece:<手牌下标>` / `region:<候选下标>` / `cast:q`。`R` 旋转修改 `UI.rot`。

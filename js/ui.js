@@ -40,6 +40,7 @@
       $('#seed').textContent = UI.seed;
       $('#pv-seed').textContent = UI.seed;
       $('#pv-name').textContent = G.BIOMES[G.biome].name;
+      if (UI.drawModes) UI.drawModes();
     };
     // 换一个布局：同一种地图，重新随机生成地形
     $('#title-reroll').onclick = () => {
@@ -49,6 +50,20 @@
       UI.drawBiomes();
     };
     $('#title-help').onclick = () => toggleHelp(true);
+    // 模式选择：切换后重新生成地图（无尽模式整张地图都已开拓）
+    UI.drawModes = () => {
+      document.querySelectorAll('#modes [data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === G.mode));
+      const best = G.Endless.best();
+      $('#mode-best').textContent = best ? `最高纪录：第 ${best.round} 轮` : '满图 · 没有尽头';
+      $('#title-start').textContent = G.mode === 'endless' ? '无尽守望' : '开始守护';
+    };
+    document.querySelectorAll('#modes [data-mode]').forEach(b => b.onclick = () => {
+      if (G.mode === b.dataset.mode) return;
+      G.setMode(b.dataset.mode);
+      G.makeThumbs(UI.seed);
+      G.newMap(UI.seed, G.biome);
+      UI.drawBiomes(); UI.drawModes();
+    });
     // 返回标题：游戏中先确认（确认期间暂停），结算画面直接返回
     let pausedBefore = false;
     const closeConfirm = () => { $('#confirm-home').hidden = true; S.paused = pausedBefore; };
@@ -161,7 +176,7 @@
     $('#r-lives').textContent = S.lives;
     $('#r-gold').textContent = fmt(S.gold);
     $('#r-ley').textContent = S.ley;
-    $('#r-wave').textContent = `${Math.min(S.wave + (S.phase === 'prep' ? 1 : 0), G.WAVES.length)} / ${G.WAVES.length}`;
+    $('#r-wave').textContent = S.endless ? `第 ${S.wave + (S.phase === 'prep' ? 1 : 0)} 轮` : `${Math.min(S.wave + (S.phase === 'prep' ? 1 : 0), G.WAVES.length)} / ${G.WAVES.length}`;
     // 路径长度
     if (Wd.dist) {
       const lens = Wd.portals.filter(p => p.openWave <= S.wave + 1).map(p => fmt(Wd.pathLen(p)));
@@ -178,12 +193,14 @@
     $('#btn-undo').classList.toggle('disabled', !prep || !S.undo.length);
     // 波次面板
     const wp = $('#wave-panel');
-    if (prep && S.wave < G.WAVES.length) {
-      const next = G.WAVES[S.wave];
+    if (prep && (S.endless || S.wave < G.WAVES.length)) {
+      const next = G.waveGroups(S.wave + 1);
       const n = S.wave + 1;
       const twoPortals = Wd.portals[1].openWave <= n;
       wp.hidden = false;
-      wp.innerHTML = `<div class="wp-title">下一波 · 第 ${n} 波${twoPortals ? '<span class="tag">双向进攻</span>' : ''}</div>
+      const unit = S.endless ? '轮' : '波';
+      wp.innerHTML = `<div class="wp-title">${S.endless && S.wave ? '休整中 · ' : ''}下一${unit} · 第 ${n} ${unit}${twoPortals ? '<span class="tag">双向进攻</span>' : ''}</div>
+        ${S.endless ? `<div class="wp-sub">之后每 ${G.Endless.REST_EVERY} 轮休整一次，期间敌人连续不断</div>` : ''}
         <div class="wp-list">${G.waveSummary(next).map(([t, n]) => `<span class="chip ${G.ENEMIES[t].boss ? 'boss' : ''}" data-tip="enemy:${t}">${enemyIc(t)}×${n}</span>`).join('')}</div>
         ${omenHtml(true)}
         <button id="btn-start2" class="primary">⚔ 开始战斗 <kbd>空格</kbd></button>`;
@@ -191,7 +208,8 @@
       wp.querySelectorAll('[data-purge]').forEach(b => b.onclick = () => G.purgeOmen(b.dataset.purge));
     } else if (S.phase === 'combat') {
       wp.hidden = false;
-      wp.innerHTML = `<div class="wp-title">第 ${S.wave} 波 · 战斗中</div>${omenHtml(false)}<div class="wprog"><i id="wprog"></i></div><div class="wp-sub" id="wleft"></div>`;
+      const rest = S.endless ? G.Endless.REST_EVERY - ((S.wave - 1) % G.Endless.REST_EVERY) - 1 : 0;
+      wp.innerHTML = `<div class="wp-title">第 ${S.wave} ${S.endless ? '轮' : '波'} · 战斗中${S.endless && G.Endless.isRest(S.wave) ? '<span class="tag boss">Boss</span>' : ''}</div>${S.endless ? `<div class="wp-sub">${rest ? `再过 ${rest} 轮可以休整` : '击败 Boss 并清场后休整'}</div>` : ''}${omenHtml(false)}<div class="wprog"><i id="wprog"></i></div><div class="wp-sub" id="wleft"></div>`;
     } else wp.hidden = true;
     $('#btn-start').hidden = true;
     if (prep && S.expandTokens > 0) {
@@ -393,7 +411,7 @@
   UI.showBlessings = function (list) {
     const m = $('#modal-bless');
     m.hidden = false;
-    m.innerHTML = `<div class="bless-box"><div class="bless-title">✦ 森林的祝福 ✦</div><div class="bless-sub">第 ${S.wave} 波已击退。选择一项祝福（按 1 / 2 / 3）</div>
+    m.innerHTML = `<div class="bless-box"><div class="bless-title">✦ 森林的祝福 ✦</div><div class="bless-sub">第 ${S.wave} ${S.endless ? "轮" : "波"}已击退。选择一项祝福（按 1 / 2 / 3）</div>
       <div class="cards">${list.map((b, i) => `<div class="card" data-i="${i}">${UI.ic(`assets/icons/blessing_${b.id}.png`, b.icon, 'big')}<div class="cn">${b.name}</div><div class="cd">${b.desc}</div>${b.repeat ? '' : '<div class="once">永久效果</div>'}<kbd>${i + 1}</kbd></div>`).join('')}</div></div>`;
     UI.blessList = list;
     m.querySelectorAll('.card').forEach(c => c.onclick = () => pickBless(+c.dataset.i));
@@ -411,9 +429,12 @@
     const e = $('#screen-end');
     e.hidden = false;
     e.className = win ? 'win' : 'lose';
-    $('#end-title').textContent = win ? '月光古树得救了！' : '古树陷落……';
-    $('#end-sub').textContent = win ? '腐化巨魔王倒下，森林重归宁静。' : `你坚持到了第 ${S.wave} 波。重新规划地形，再试一次吧！`;
-    $('#end-stats').innerHTML = `<div><b>${S.wave}</b>波次</div><div><b>${S.stats.kills}</b>击杀</div><div><b>${S.stats.built}</b>建塔</div><div><b>${S.stats.lost}</b>塔被摧毁</div><div><b>${S.lives}</b>剩余生命</div><div><b>${G.Hero.lvl}</b>露娜等级</div>`;
+    $('#end-title').textContent = win ? '月光古树得救了！' : S.endless ? '永夜终结' : '古树陷落……';
+    if (S.endless) {
+      const r = S.record || {};
+      $('#end-sub').innerHTML = `你在无尽之夜中坚持到了<b> 第 ${S.wave} 轮</b>。` + (r.better ? (r.old ? `<br><span class="good">🏆 新纪录！（之前：第 ${r.old.round} 轮）</span>` : '<br><span class="good">🏆 首个纪录！</span>') : (r.old ? `<br>最高纪录：第 ${r.old.round} 轮` : ''));
+    } else $('#end-sub').textContent = win ? '腐化巨魔王倒下，森林重归宁静。' : `你坚持到了第 ${S.wave} 波。重新规划地形，再试一次吧！`;
+    $('#end-stats').innerHTML = `<div><b>${S.wave}</b>${S.endless ? '轮次' : '波次'}</div><div><b>${S.stats.kills}</b>击杀</div><div><b>${S.stats.built}</b>建塔</div><div><b>${S.stats.lost}</b>塔被摧毁</div><div><b>${S.lives}</b>剩余生命</div><div><b>${G.Hero.lvl}</b>露娜等级</div>`;
   };
 
   function cycleSpeed() {
@@ -768,7 +789,7 @@
     if (S.phase === 'combat' && $('#wprog')) {
       const left = S.queue.length + S.enemies.length;
       $('#wprog').style.width = (1 - S.queue.length / Math.max(1, S.waveTotal)) * 100 + '%';
-      $('#wleft').textContent = `剩余敌人 ${left}`;
+      $('#wleft').textContent = S.endless && !S.queue.length && S.nextRoundT > 0 ? `场上敌人 ${S.enemies.length}　·　${Math.ceil(S.nextRoundT)} 秒后下一轮` : `剩余敌人 ${left}`;
     }
     // 英雄
     const Hh = G.Hero;
