@@ -1377,6 +1377,7 @@
   };
   G.nukeImpact = function (p, R, dmg) {
     A.play('nuke');
+    G.Music.duck(1.6);
     G.shake(1.0);
     G.UI.flashScreen();
     FX.flash(V().set(p.x, 0.8, p.z), 0xffd890, R * 1.8, 0.55, 1.3);

@@ -229,6 +229,7 @@
     Wd.updateDots(time, S.phase !== 'combat');
     G.UI.frame(dt);
     G.Guide.update(dt);
+    G.Music.direct(dt, S);
 
     const c = G.cam;
     if (S.phase === 'title') {

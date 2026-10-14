@@ -22,7 +22,7 @@
 | `js/config.js` | **全部数据表**：`G.CFG` 常量、`G.TOWERS`、`G.ENEMIES`、`G.WAVES`、`G.HERO`、`G.BLESSINGS`、`G.PIECES`（地形块形状）、`G.REGIONS`（扩张区域）、`G.BIOMES`（地图配色/光照/装饰色） |
 | `js/models.js` | `G.M`：所有低多边形模型工厂（塔、敌人、仙子、古树、传送门、树木/仙人掌/雪人、陨石、曳光弹），以及材质工具 `M.mat` / `M.glow` / `M.lin` |
 | `js/audio.js` | `G.Audio`：WebAudio 程序合成音效，`A.play('name')` |
-| `js/music.js` | `G.Music`：背景音乐。小型步进音序器 + 合成乐器（含合成钢琴 `I.piano`：标题曲是写好旋律的钢琴小品，森林备战阶段也用钢琴），曲目 `title / forest / desert / snow`（`SONGS`），强度 `setIntensity(0 备战 / 1 战斗 / 2 Boss)` 由波次开始/结束驱动；`setMode('title'|'game')` 在小节线上换曲。若存在 `assets/audio/bgm_<曲目>.mp3` 则改播文件。首次点击/按键后才开始；切后台自动暂停。`Mu._render(曲目, 强度, 秒)` 可离线渲染测音量 |
+| `js/music.js` | `G.Music`：背景音乐。小型步进音序器 + 合成乐器（含合成钢琴 `I.piano`：标题曲是写好旋律的钢琴小品，森林备战阶段也用钢琴），曲目 `title / forest / desert / snow`（`SONGS`），强度由**配乐导演** `Mu.direct(dt, S)`（主循环每帧调用，每 0.5 秒评估）根据战况决定 4 档：0 宁静（非战斗）/ 1 轻快 / 2 紧张（场上 35+ 敌人或有敌人逼近古树）/ 3 高潮（Boss、大量敌人逼近、敌潮 90+、生命告急）；只在小节线上切换，降档要缓和 5 秒。曲子本身写 3 档编制（`SONG_L` 映射），`playStep()` 再叠加通用层（1 档沙锤框鼓、3 档通鼓 + 弦乐重音 + 风声）、生命 ≤5 的心跳、事件点缀 `Mu.sting('rollIn'|'boss')`；高潮时速度 ×1.1（`Mu.tempo` 缓慢逼近）；每循环一遍和声转调（`MOD`，曲子需 `modulate: true` 和 `beats`）；`Mu.duck()` 星核坠击时压低音乐。`setIntensity(n>0)` 现在只触发开战鼓点；`setMode('title'|'game')` 在小节线上换曲。若存在 `assets/audio/bgm_<曲目>.mp3` 则改播文件。首次点击/按键后才开始；切后台自动暂停。`Mu._render(曲目, 强度, 秒)` 可离线渲染测音量 |
 | `js/fx.js` | `G.FX`：粒子池、闪光、柔边光环、光带拖尾、闪电、飘字 |
 | `js/terrain.js` | `G.Terrain`：地面高度图网格（含高地）、上色、水面、实例化装饰、外围森林、建造网格、扩张空位预览 |
 | `js/grass.js` | `G.Grass`：风吹草地（实例化草簇，风在顶点着色器里算）+ 云影（`Grass.cloudify(材质)` 给地面材质打补丁） |

@@ -1,13 +1,17 @@
 'use strict';
 // 背景音乐：一个小型步进音序器 + 一组合成乐器，实时合成每首曲子（不需要音频文件）。
 //   曲目：title（标题）、forest / desert / snow（三张地图的游戏内配乐）
-//   强度：0 备战（舒缓）· 1 战斗（加入鼓点、低音与主旋律）· 2 Boss（再加重鼓与更密的伴奏）
+//   配乐导演 Mu.direct()：根据战况实时决定强度（只在小节线上切换，降档要等局势缓和几秒）
+//     0 宁静（备战 / 休整）· 1 轻快（刚开战、敌人少：舒缓旋律 + 轻打击）
+//     2 紧张（敌人多或逼近古树：完整战斗编制）· 3 高潮（Boss、敌潮、生命告急：重鼓 + 弦乐重音 + 加速）
+//   另外：每循环一遍和声就转调、开战鼓点引入、Boss 号角、星核坠击压低音乐、生命告急心跳
 // 如果 assets/audio/bgm_<曲目>.mp3 存在，就改为播放该文件。
 (function () {
   const A = G.Audio;
-  const Mu = G.Music = { mode: 'title', muted: false, started: false, intensity: 0 };
+  const Mu = G.Music = { mode: 'title', muted: false, started: false };
   try { Mu.muted = localStorage.getItem('starleaf.musicMuted') === '1'; } catch (e) { /* 忽略 */ }
-  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+  let TR = 0;   // 段落转调（半音）
+  const mtof = m => 440 * Math.pow(2, (m + TR - 69) / 12);
   const rnd = a => a[Math.floor(Math.random() * a.length)];
   const chance = p => Math.random() < p;
 
@@ -203,7 +207,7 @@
 
     // 翠叶森林：凯尔特民谣，6/8 拍，竖琴 + 长笛 + 框鼓
     forest: {
-      bpm: 66 * 3, spb: 6, beat: 1, vol: 0.85,   // 以八分音符计：每小节 6 个八分音符
+      bpm: 66 * 3, spb: 6, beat: 1, vol: 0.85, beats: [0, 3], modulate: true,   // 以八分音符计：每小节 6 个八分音符
       bars: [
         { pad: [52, 59, 64, 67], bass: 40 }, { pad: [50, 57, 62, 66], bass: 38 }, { pad: [48, 55, 60, 64], bass: 36 }, { pad: [50, 57, 62, 66], bass: 38 },
         { pad: [52, 59, 64, 67], bass: 40 }, { pad: [43, 50, 55, 59], bass: 43 }, { pad: [45, 52, 57, 60], bass: 33 }, { pad: [47, 54, 59, 63], bass: 35 },
@@ -236,7 +240,7 @@
 
     // 黄沙峡谷：中东风格，希贾兹音阶（D），乌德琴 + 芦笛 + 达布卡
     desert: {
-      bpm: 96, spb: 16, beat: 0.25, vol: 0.85,   // 以十六分音符计
+      bpm: 96, spb: 16, beat: 0.25, vol: 0.85, beats: [0, 4, 8, 12], modulate: true,   // 以十六分音符计
       bars: [
         { pad: [50, 54, 57], tone: 'D' }, { pad: [50, 54, 57], tone: 'D' }, { pad: [51, 55, 58], tone: 'Eb' }, { pad: [50, 54, 57], tone: 'D' },
         { pad: [43, 50, 55, 58], tone: 'Gm' }, { pad: [48, 51, 55], tone: 'Cm' }, { pad: [51, 55, 58], tone: 'Eb' }, { pad: [50, 54, 57], tone: 'D' },
@@ -273,7 +277,7 @@
 
     // 霜雪高原：冰晶空灵，E 小调，玻璃铺底 + 钟琴 + 弦乐 + 太鼓
     snow: {
-      bpm: 84, spb: 8, beat: 0.5, vol: 0.8,   // 以八分音符计
+      bpm: 84, spb: 8, beat: 0.5, vol: 0.8, beats: [0, 2, 4, 6], modulate: true,   // 以八分音符计
       bars: [
         { pad: [52, 59, 64, 66], root: 40 }, { pad: [48, 55, 59, 64], root: 36 }, { pad: [43, 50, 55, 62], root: 43 }, { pad: [50, 55, 57, 62], root: 38 },
         { pad: [52, 59, 64, 66], root: 40 }, { pad: [45, 52, 55, 60], root: 33 }, { pad: [48, 55, 59, 64], root: 36 }, { pad: [47, 54, 57, 63], root: 35 },
@@ -310,17 +314,73 @@
   // ---------- 音序器 ----------
   let song = null, songKey = '', pending = null, step = 0, bi = 0, nextTime = 0, St = {};
   function setSongNow(key) {
-    songKey = key; song = SONGS[key]; step = 0; bi = 0; St = {};
-    St.stepDur = 60 / song.bpm * song.beat;
+    songKey = key; song = SONGS[key]; step = 0; bi = 0; St = { loop: 0 }; TR = 0;
+    St.baseStep = 60 / song.bpm * song.beat;
+    St.stepDur = St.baseStep / Mu.tempo;
     St.barDur = St.stepDur * song.spb;
   }
+  const MOD = [0, 5, 0, -5];   // 每循环一遍和声转一次调：原调 → 上四度 → 原调 → 下四度
+  const SONG_L = [0, 0, 1, 2]; // 导演的 4 档 → 曲子本身写好的 3 档编制
+  // 播放一步：曲子本身 + 按强度叠加的通用层 + 事件点缀
+  function playStep(t, s, L) {
+    const bar = song.bars[bi % song.bars.length], b = bi % song.bars.length;
+    if (s === 0 && b === 0 && song.modulate && step > 0) { St.loop++; TR = MOD[St.loop % MOD.length]; }
+    song.play(t, s, bar, b, St, SONG_L[L]);
+    const beats = song.beats;
+    if (!beats) return;
+    const onBeat = beats.includes(s), down = s === 0;
+    if (L === 1) {          // 轻快：沙锤点拍 + 小节开头一记轻框鼓
+      if (onBeat) I.shaker(t, down ? 0.05 : 0.035);
+      if (down) I.frame(t, 0.16);
+    }
+    if (L === 3) {          // 高潮：每拍通鼓、小节开头低音弦乐重音、每 4 小节一次风声渐强
+      if (onBeat) I.tek(t, down ? 0.14 : 0.1, 700);                    // 低沉的通鼓，和曲子自己的大鼓错开音色
+      if (down) {
+        const root = (bar.bass || bar.root || bar.pad[0]) - 12;
+        I.strings(root + 12, t, St.stepDur * 1.5, 0.03);
+        I.strings(root + 19, t, St.stepDur * 1.5, 0.02);
+        if (b % 4 === 3) I.swell(t, St.barDur, 0.035, 1200);
+      }
+      if (!onBeat && Math.random() < 0.5) I.tek(t, 0.05, 5200);
+    }
+    if (Mu.danger && L > 0 && down) {   // 生命告急：心跳
+      I.kick(t, 0.28, 75, 40, 0.22);
+      I.kick(t + 0.2, 0.2, 70, 40, 0.2);
+    }
+    if (Mu.stings.length) for (const name of Mu.stings.splice(0)) STING[name] && STING[name](t);
+  }
+  // 事件点缀：在下一步的时间点上播放
+  const STING = {
+    // 开战：一小节渐强的鼓点
+    rollIn(t) {
+      const n = 12, d = 0.07;
+      for (let i = 0; i < n; i++) I.tek(t + i * d, 0.03 + i * 0.012, 2600 + i * 80);
+      I.kick(t + n * d, 0.5, 130, 45, 0.4);
+    },
+    // Boss 现身：低沉号角 + 三声太鼓
+    boss(t) {
+      for (const [m, dt] of [[38, 0], [45, 0], [50, 0.02]]) {
+        const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+        o.type = 'sawtooth'; o.frequency.value = mtof(m);
+        f.type = 'lowpass'; f.frequency.setValueAtTime(300, t); f.frequency.linearRampToValueAtTime(1400, t + 1.2); f.frequency.linearRampToValueAtTime(400, t + 2.6);
+        g.gain.setValueAtTime(0.0001, t + dt); g.gain.exponentialRampToValueAtTime(0.09, t + 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
+        o.connect(f); f.connect(g); g.connect(padBus); o.start(t + dt); o.stop(t + 3);
+      }
+      for (let i = 0; i < 3; i++) I.taiko(t + i * 0.42, 0.6 - i * 0.1);
+    },
+  };
   function tick() {
     if (!ctx || !song) return;
     while (nextTime < ctx.currentTime + 0.5) {
       const s = step % song.spb;
       if (s === 0 && pending) { setSongNow(pending); pending = null; apply(); }   // 只在小节线上换曲
+      if (s === 0) Mu.level = Mu.mode === 'title' ? 0 : Mu.target;                // 强度也只在小节线上切换
+      // 速度随强度缓慢变化（每步靠近一点）
+      const wantTempo = [1, 1, 1.04, 1.1][Mu.level];
+      Mu.tempo += (wantTempo - Mu.tempo) * 0.04;
+      St.stepDur = St.baseStep / Mu.tempo; St.barDur = St.stepDur * song.spb;
       if (!Mu.muted && !files[songKey]) {
-        try { song.play(nextTime, step % song.spb, song.bars[bi % song.bars.length], bi % song.bars.length, St, Mu.intensity); } catch (e) { /* 忽略单个音符的错误 */ }
+        try { playStep(nextTime, s, Mu.level); } catch (e) { /* 忽略单个音符的错误 */ }
       }
       step++;
       if (step % song.spb === 0) bi++;
@@ -360,8 +420,46 @@
     setInterval(tick, 100);
     tick();
   };
-  Mu.setMode = function (mode) { Mu.mode = mode; if (mode === 'title') Mu.intensity = 0; cue(); };
-  Mu.setIntensity = function (level) { Mu.intensity = level; };
+  Mu.level = 0; Mu.target = 0; Mu.tempo = 1; Mu.danger = false; Mu.stings = [];
+  Mu.setMode = function (mode) { Mu.mode = mode; if (mode === 'title') Mu.target = 0; cue(); };
+  // 兼容旧接口：开战 / 结束时的提示。真正的强度由 direct() 根据战况决定
+  Mu.setIntensity = function (level) { if (level > 0) Mu.sting('rollIn'); };
+  Mu.sting = function (name) { if (Mu.started && !Mu.muted && Mu.stings.length < 3) Mu.stings.push(name); };
+  // 星核坠击等大事件：音乐瞬间压低，再慢慢恢复
+  Mu.duck = function (dur = 1.2) {
+    if (!out || Mu.muted || files[songKey]) return;
+    const now = ctx.currentTime, v = SONGS[songKey].vol;
+    out.gain.cancelScheduledValues(now);
+    out.gain.setValueAtTime(out.gain.value, now);
+    out.gain.linearRampToValueAtTime(v * 0.15, now + 0.05);
+    out.gain.linearRampToValueAtTime(v, now + dur);
+  };
+  // ---------- 配乐导演：每 0.5 秒评估一次战况 ----------
+  let evalT = 0, downT = 0, lastBoss = 0;
+  Mu.direct = function (dt, S) {
+    evalT -= dt;
+    if (evalT > 0) return;
+    evalT = 0.5;
+    if (S.phase !== 'combat') { Mu.target = 0; Mu.danger = false; downT = 0; lastBoss = 0; return; }
+    // "逼近古树"按路线长度的比例算（路线短的地图不会一开战就满格紧张）
+    const W = G.CFG.W, lens = G.World.portals.filter(p => p.openWave <= S.wave).map(p => G.World.dist[p.y * W + p.x]).filter(isFinite);
+    const nearD = Math.min(7, 0.3 * Math.min(...lens, 40));
+    let n = 0, near = 0, boss = 0;
+    for (const e of S.enemies) {
+      if (e.dead) continue;
+      n++;
+      if (e.def.boss) boss++;
+      if (e.progress() < nearD) near++;
+    }
+    if (boss > lastBoss) Mu.sting('boss');
+    lastBoss = boss;
+    Mu.danger = S.lives <= 5;
+    // 高潮：Boss 在场、大量敌人逼近古树、敌潮（场上 90+）、或生命告急时仍有不少敌人
+    // 紧张：场上 35+ 敌人，或有几个已经逼近古树；否则是轻快
+    const raw = boss || near >= 14 || n >= 90 || (Mu.danger && n >= 15) ? 3 : n >= 35 || near >= 5 ? 2 : 1;
+    if (raw >= Mu.target) { Mu.target = raw; downT = 0; }
+    else if ((downT += 0.5) >= 5) { Mu.target--; downT = 0; }   // 局势缓和 5 秒才降一档
+  };
   Mu.toggle = function () {
     Mu.muted = !Mu.muted;
     try { localStorage.setItem('starleaf.musicMuted', Mu.muted ? '1' : '0'); } catch (e) { /* 忽略 */ }
@@ -380,18 +478,18 @@
   Mu._songs = SONGS;   // 调试用
   // 调试：离线渲染某首曲子若干秒，返回音量（RMS）与峰值，用来检查各曲各强度是否正常发声、音量是否平衡
   Mu._render = async function (key, level, seconds = 8) {
-    const saved = { ctx, out, padBus, leadBus, drumBus, pianoBus, noiseBuf, song, songKey, St, step, bi, nextTime, lvl: Mu.intensity, ac: A.ctx };
+    const saved = { ctx, out, padBus, leadBus, drumBus, pianoBus, noiseBuf, song, songKey, St, step, bi, nextTime, TR, ac: A.ctx };
     const off = new OfflineAudioContext(2, 44100 * seconds, 44100);
     A.ctx = off; build(); out.gain.value = SONGS[key].vol;
-    setSongNow(key); Mu.intensity = level;
+    setSongNow(key);
     let errors = 0;
     for (let t = 0.05; t < seconds - 0.5; t += St.stepDur) {
-      try { song.play(t, step % song.spb, song.bars[bi % song.bars.length], bi % song.bars.length, St, level); } catch (e) { errors++; }
+      try { playStep(t, step % song.spb, level); } catch (e) { errors++; }
       step++; if (step % song.spb === 0) bi++;
     }
     const buf = await off.startRendering();
-    ({ ctx, out, padBus, leadBus, drumBus, pianoBus, noiseBuf, song, songKey, St, step, bi, nextTime } = saved);
-    Mu.intensity = saved.lvl; A.ctx = saved.ac;
+    ({ ctx, out, padBus, leadBus, drumBus, pianoBus, noiseBuf, song, songKey, St, step, bi, nextTime, TR } = saved);
+    A.ctx = saved.ac;
     const d = buf.getChannelData(0); let sum = 0, peak = 0;
     for (let i = 0; i < d.length; i++) { sum += d[i] * d[i]; peak = Math.max(peak, Math.abs(d[i])); }
     return { rms: +Math.sqrt(sum / d.length).toFixed(3), peak: +peak.toFixed(2), errors };
