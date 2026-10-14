@@ -124,13 +124,20 @@
   const DECOR_SETS = {
     forest: {
       tuft: { geo: () => merged([[cone3(), [0, 0.07, 0], [0.025, 0.15, 0.025], [0.15, 0, 0.1]], [cone3(), [0.04, 0.06, 0.02], [0.022, 0.12, 0.022], [0, 0, -0.45]], [cone3(), [-0.035, 0.055, -0.01], [0.022, 0.11, 0.022], [0.2, 0, 0.5]], [cone3(), [0, 0.05, 0.04], [0.02, 0.1, 0.02], [0.5, 0, 0]]]),
-        colors: [0x6f9a44, 0x86a84e, 0x9cb85c, 0x5f8a3e], shadow: false },
+        colors: [0x6f9a44, 0x86a84e, 0x9cb85c, 0x5f8a3e], shadow: false, w: 0.8 },   // 有了风吹草地，这种小草簇只少量点缀
       shrub: { geo: () => merged([[ico(), [0, 0.06, 0], [0.09, 0.07, 0.09]], [ico(), [0.07, 0.04, 0.03], [0.06, 0.05, 0.06]], [ico(), [-0.05, 0.04, -0.04], [0.06, 0.05, 0.06]]]),
         colors: [0x5e8a3f, 0x6f8f45, 0x7f9a4c, 0x9a6a4a], shadow: true },
       pebble: { geo: () => merged([[dode(), [0, 0.02, 0], [0.06, 0.035, 0.05]], [dode(), [0.07, 0.015, 0.03], [0.035, 0.025, 0.03]]]),
         colors: [0x8f8a96, 0x847e74, 0x9e978a], shadow: true },
-      flower: { geo: () => merged([[cyl(3), [0, 0.05, 0], [0.006, 0.1, 0.006]], [ico(), [0, 0.11, 0], [0.03, 0.022, 0.03]], [ico(), [0.05, 0.08, 0.02], [0.024, 0.018, 0.024]]]),
-        colors: [0xfff7ea, 0xffe37a, 0xffb3d6, 0xd2bfff], shadow: false },
+      // 小雏菊：细茎 + 一圈白色花瓣 + 黄色花心（顶点色烘焙），从草丛里探出头
+      flower: { geo: () => merged([
+          [cyl(3), [0, 0.11, 0], [0.006, 0.22, 0.006], undefined, 0x5a8a3a],
+          [new THREE.CylinderGeometry(1, 0.55, 1, 9), [0, 0.225, 0], [0.042, 0.008, 0.042], [0.25, 0, 0.1], 0xffffff],
+          [ico(1), [0, 0.232, 0], [0.016, 0.01, 0.016], undefined, 0xffc93a],
+          [cyl(3), [0.035, 0.08, 0.01], [0.005, 0.16, 0.005], [0, 0, -0.25], 0x5a8a3a],
+          [new THREE.CylinderGeometry(1, 0.55, 1, 9), [0.055, 0.16, 0.012], [0.032, 0.007, 0.032], [-0.2, 0, -0.3], 0xffffff],
+          [ico(1), [0.055, 0.166, 0.012], [0.012, 0.008, 0.012], undefined, 0xffc93a]]),
+        colors: [0xffffff, 0xffffff, 0xfff4c8, 0xffd6ea, 0xe6dcff], shadow: false, vc: true, w: 2.4, extra: 2.2 },
     },
     desert: {
       // 枯枝杂丛：几根向外张开的干枯细枝
@@ -161,7 +168,7 @@
         colors: [0x9fe4ff, 0xbfe8ff, 0xd0d8ff], shadow: false },
     },
   };
-  const DECOR_MAX = { tuft: 3200, shrub: 1200, pebble: 1500, flower: 1000 };
+  const DECOR_MAX = { tuft: 3200, shrub: 1200, pebble: 1500, flower: 2400 };
   T.items = [];
 
   // ---------- 构建 ----------
@@ -186,6 +193,7 @@
     T.grid = null;
     T.onExpand();
     buildSlots(grp);
+    if (G.Grass) G.Grass.build(grp, Wd0rng((G.World.seed * 7 + 3) >>> 0), (x, z) => outer(x, z, gc));
   };
   T.onExpand = function () { buildGrid(T.grp); T.spots = null; };
 
@@ -212,7 +220,9 @@
     for (let i = 0; i < pos.count; i++) {
       if (Math.abs(pos.getX(i)) < GW / 2 + 1.01 && Math.abs(pos.getZ(i)) < GH / 2 + 1.01) nor.setXYZ(i, 0, 1, 0);
     }
-    const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ vertexColors: true }));
+    const om = new THREE.MeshLambertMaterial({ vertexColors: true });
+    if (G.Grass) G.Grass.cloudify(om);
+    const m = new THREE.Mesh(g, om);
     m.receiveShadow = true;
     grp.add(m);
   }
@@ -305,7 +315,9 @@
     const n = g.attributes.position.count;
     g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
     // 平滑着色：高地的坡是连续的曲面
-    const m = new THREE.Mesh(g, new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 6, specular: 0x060606 }));
+    const gm = new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 6, specular: 0x060606 });
+    if (G.Grass) G.Grass.cloudify(gm);
+    const m = new THREE.Mesh(g, gm);
     m.receiveShadow = true; m.castShadow = true;
     grp.add(m);
     T.ground = m;
@@ -580,8 +592,10 @@
       T.inst[k] = { mesh, d, n: 0 };
     }
     const pickType = (w) => { let r = rng() * w.reduce((a, b) => a + b[1], 0); for (const [k, p] of w) { if ((r -= p) <= 0) return k; } return w[0][0]; };
-    const groundW = [['tuft', 6], ['pebble', 2], ['shrub', 1.2], ['flower', 0.7]];
-    const topW = [['tuft', 6], ['pebble', 1.2], ['flower', 1], ['shrub', 0.6]];
+    // 每张地图的装饰可以用 w 调整某个槽位的出现比例
+    const wk = k => (set[k].w !== undefined ? set[k].w : 1);
+    const groundW = [['tuft', 6 * wk('tuft')], ['pebble', 2], ['shrub', 1.2], ['flower', 0.7 * wk('flower')]];
+    const topW = [['tuft', 6 * wk('tuft')], ['pebble', 1.2], ['flower', 1 * wk('flower')], ['shrub', 0.6]];
     const add = (type, x, z, tile, layer, onPath) => {
       const I = T.inst[type];
       if (I.n >= I.d.max) return;
@@ -596,6 +610,12 @@
       for (let i = 0; i < n; i++) {
         const type = pickType(groundW);
         add(type, t.wx + (rng() - 0.5) * 0.85, t.wz + (rng() - 0.5) * 0.85, t, 'ground', type === 'pebble');
+      }
+      // 额外的野花（成片分布：用低频噪声决定这一格花多不多）
+      const ex = set.flower.extra || 0;
+      if (ex && t.type !== 'water') {
+        const k = Math.floor(ex * 2 * fbm(t.x * 0.35 + 9, t.y * 0.35 + 4) * rng() + 0.3);
+        for (let i = 0; i < k; i++) add('flower', t.wx + (rng() - 0.5) * 0.9, t.wz + (rng() - 0.5) * 0.9, t, 'ground', false);
       }
       // 土块顶部的边角装饰（避开中间建塔的位置）
       for (let i = 0; i < 2; i++) {
@@ -614,6 +634,7 @@
   }
   const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), v = new THREE.Vector3(), sc = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
   T.updateDecor = function () {
+    if (G.Grass && G.Grass.mesh) G.Grass.sync();
     if (!T.items.length) return;
     for (const it of T.items) {
       const t = it.tile;
@@ -707,6 +728,7 @@
   };
 
   T.update = function (dt, time) {
+    if (G.Grass) G.Grass.update(time);
     // 地块升降动画：逐帧改变显示高度并重塑地面
     if (T.anims.length) {
       for (let i = T.anims.length - 1; i >= 0; i--) {

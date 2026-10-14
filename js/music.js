@@ -22,7 +22,7 @@
   }
 
   // ---------- 混音台 ----------
-  let ctx, out, padBus, leadBus, drumBus, noiseBuf;
+  let ctx, out, padBus, leadBus, drumBus, pianoBus, noiseBuf;
   function build() {
     ctx = A.ctx;
     out = ctx.createGain(); out.gain.value = 0; out.connect(ctx.destination);
@@ -36,6 +36,9 @@
     padBus = ctx.createGain(); padBus.connect(lp); lp.connect(mk(1, 0.7));
     leadBus = mk(0.8, 0.75);
     drumBus = mk(0.18, 0.9);
+    // 钢琴：略微收掉高频，更温暖；混响送得多一些，像在空旷的大厅里
+    const plp = ctx.createBiquadFilter(); plp.type = 'lowpass'; plp.frequency.value = 3800; plp.Q.value = 0.3;
+    pianoBus = ctx.createGain(); pianoBus.connect(plp); plp.connect(mk(0.95, 0.8));
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
   }
@@ -105,6 +108,16 @@
         o.start(t); o.stop(t + dur + 0.05);
       }
     },
+    // 钢琴：几条带轻微非谐性的泛音，高泛音衰减更快；加一点琴槌敲击的噪声
+    piano(m, t, vol = 0.05, dur = 3.2, pan = 0) {
+      const f = mtof(m), dk = Math.max(0.6, dur * Math.pow(220 / f, 0.35));   // 高音衰减得更快
+      [[1, 1], [2, 0.42], [3, 0.2], [4, 0.09], [5, 0.05], [6, 0.025]].forEach(([k, a]) => {
+        const fk = f * k * Math.sqrt(1 + 0.0004 * k * k);
+        if (fk > 9000) return;
+        osc(pianoBus, 'sine', fk, t, dk / Math.pow(k, 0.6), vol * a, { attack: 0.003, pan });
+      });
+      noise(pianoBus, t, 0.03, vol * 0.18, 'bandpass', Math.min(6000, f * 3), 1.5);
+    },
     bass(m, t, dur, vol = 0.1) { osc(padBus, 'sine', mtof(m), t, dur, vol, { attack: 0.02 }); osc(padBus, 'triangle', mtof(m), t, dur * 0.5, vol * 0.3, { attack: 0.01 }); },
     // —— 打击乐 ——
     kick(t, vol = 0.5, from = 150, to = 48, dur = 0.35) {   // 低音鼓 / 达布卡"咚" / 太鼓
@@ -156,25 +169,35 @@
   // ---------- 曲目 ----------
   // 每首：bpm、每小节步数 spb、每步时值 beat（以四分音符为 1）、和声 bars，以及每一步调用的 play()
   const SONGS = {
-    // 标题：梦幻、空灵
+    // 标题：安静的钢琴小品（左手分解和弦 + 右手写好的旋律），底下垫一层很轻的铺底
     title: {
-      bpm: 70, spb: 8, beat: 0.5, vol: 0.9,
+      bpm: 68, spb: 8, beat: 0.5, vol: 0.95,
       bars: [
-        { pad: [50, 57, 61, 66], bass: 38, arp: [62, 66, 69, 73, 74, 78] }, { pad: [47, 54, 57, 62], bass: 35, arp: [59, 62, 66, 69, 71, 74] },
-        { pad: [43, 50, 54, 59], bass: 31, arp: [55, 59, 62, 66, 67, 71] }, { pad: [45, 50, 52, 57], bass: 33, arp: [57, 62, 64, 69, 74, 76] },
-        { pad: [42, 50, 54, 57], bass: 42, arp: [62, 66, 69, 74, 78, 81] }, { pad: [40, 47, 50, 55], bass: 40, arp: [59, 62, 64, 67, 71, 74] },
-        { pad: [43, 50, 54, 59], bass: 31, arp: [62, 66, 67, 71, 74, 78] }, { pad: [45, 52, 55, 61], bass: 33, arp: [61, 64, 69, 73, 76, 81] },
+        { pad: [50, 57, 61, 66], bass: 38, mel: [[0, 78, 3], [3, 76, 1], [4, 74, 2], [6, 73, 2]] },
+        { pad: [47, 54, 57, 62], bass: 35, mel: [[0, 74, 3], [3, 73, 1], [4, 71, 4]] },
+        { pad: [43, 50, 54, 59], bass: 31, mel: [[0, 71, 2], [2, 74, 2], [4, 78, 3], [7, 76, 1]] },
+        { pad: [45, 50, 52, 57], bass: 33, mel: [[0, 76, 6], [6, 74, 2]] },
+        { pad: [42, 50, 54, 57], bass: 42, mel: [[0, 81, 3], [3, 78, 1], [4, 76, 2], [6, 74, 2]] },
+        { pad: [40, 47, 50, 55], bass: 40, mel: [[0, 74, 2], [2, 71, 2], [4, 76, 4]] },
+        { pad: [43, 50, 54, 59], bass: 31, mel: [[0, 79, 2], [2, 78, 2], [4, 74, 2], [6, 71, 2]] },
+        { pad: [45, 52, 55, 61], bass: 33, mel: [[0, 73, 4], [4, 76, 2], [6, 69, 2]] },
       ],
       play(t, s, bar, bi, St) {
+        const step = St.stepDur, hum = () => (Math.random() - 0.5) * 0.02;
         if (s === 0) {
-          I.pad(bar.pad, t, St.barDur * 1.6, 0.045, 'triangle', 1.4);
-          I.bass(bar.bass, t, St.barDur * 1.2, 0.09);
-          if (bi % 2 === 0) I.bell(bar.arp[5] + 12, t, 0.05);
+          St.loop = (St.loop || 0) + (bi === 0 ? 1 : 0);
+          I.pad(bar.pad, t, St.barDur * 1.5, 0.018, 'sine', 1.6);
+          I.piano(bar.bass < 36 ? bar.bass + 12 : bar.bass, t, 0.05, 4, -0.25);
         }
-        if (chance(s % 2 ? 0.55 : 0.85)) {
-          St.ai = Math.max(0, Math.min(5, (St.ai || 2) + rnd([-2, -1, 1, 1, 2])));
-          I.harp(bar.arp[St.ai], t + (Math.random() - 0.5) * 0.015, 0.06 + Math.random() * 0.03, (Math.random() - 0.5) * 0.8);
+        // 左手：根音之后依次弹和弦里的另外三个音
+        if (s === 2 || s === 4 || s === 6) I.piano(bar.pad[s / 2], t + hum(), 0.03 + Math.random() * 0.008, 2.6, -0.15);
+        // 右手旋律；第一遍之后偶尔在高八度加一个回声音
+        for (const [at, m, len] of bar.mel) {
+          if (at !== s) continue;
+          I.piano(m, t + hum(), 0.055 + Math.random() * 0.01, 2.2 + len * step, 0.15);
+          if (St.loop > 1 && len >= 3 && chance(0.4)) I.piano(m + 12, t + step * 1.5, 0.018, 2.5, 0.35);
         }
+        if (s === 0 && bi === 7) I.bell(bar.pad[3] + 24, t + step * 4, 0.025);
       },
     },
 
@@ -191,7 +214,9 @@
         if (s === 0) I.pad(ch, t, St.barDur * 1.4, L === 0 ? 0.035 : 0.03);
         // 竖琴琶音：1-5-8-10-8-5
         const arp = [ch[0] + 12, ch[1] + 12, ch[2] + 12, ch[3] + 12, ch[2] + 12, ch[1] + 12];
-        if (L === 0 ? chance(0.75) : true) I.harp(arp[s], t, L === 0 ? 0.05 : 0.045, (s - 2.5) * 0.15);
+        // 备战时由钢琴轻轻弹分解和弦，开战后换成竖琴
+        if (L === 0) { if (chance(0.8)) I.piano(arp[s] - (s === 0 ? 12 : 0), t + (Math.random() - 0.5) * 0.02, s === 0 ? 0.05 : 0.035, 3, (s - 2.5) * 0.12); }
+        else I.harp(arp[s], t, 0.045, (s - 2.5) * 0.15);
         if (s === 0 || (L > 0 && s === 3)) I.bass(bar.bass, t, step * 2.6, L === 0 ? 0.08 : 0.11);
         if (L >= 1) {
           // 框鼓：1 拍重，4 拍次重，加一些轻击
@@ -355,7 +380,7 @@
   Mu._songs = SONGS;   // 调试用
   // 调试：离线渲染某首曲子若干秒，返回音量（RMS）与峰值，用来检查各曲各强度是否正常发声、音量是否平衡
   Mu._render = async function (key, level, seconds = 8) {
-    const saved = { ctx, out, padBus, leadBus, drumBus, noiseBuf, song, songKey, St, step, bi, nextTime, lvl: Mu.intensity, ac: A.ctx };
+    const saved = { ctx, out, padBus, leadBus, drumBus, pianoBus, noiseBuf, song, songKey, St, step, bi, nextTime, lvl: Mu.intensity, ac: A.ctx };
     const off = new OfflineAudioContext(2, 44100 * seconds, 44100);
     A.ctx = off; build(); out.gain.value = SONGS[key].vol;
     setSongNow(key); Mu.intensity = level;
@@ -365,7 +390,7 @@
       step++; if (step % song.spb === 0) bi++;
     }
     const buf = await off.startRendering();
-    ({ ctx, out, padBus, leadBus, drumBus, noiseBuf, song, songKey, St, step, bi, nextTime } = saved);
+    ({ ctx, out, padBus, leadBus, drumBus, pianoBus, noiseBuf, song, songKey, St, step, bi, nextTime } = saved);
     Mu.intensity = saved.lvl; A.ctx = saved.ac;
     const d = buf.getChannelData(0); let sum = 0, peak = 0;
     for (let i = 0; i < d.length; i++) { sum += d[i] * d[i]; peak = Math.max(peak, Math.abs(d[i])); }

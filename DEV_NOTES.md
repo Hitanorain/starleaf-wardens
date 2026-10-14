@@ -22,12 +22,14 @@
 | `js/config.js` | **全部数据表**：`G.CFG` 常量、`G.TOWERS`、`G.ENEMIES`、`G.WAVES`、`G.HERO`、`G.BLESSINGS`、`G.PIECES`（地形块形状）、`G.REGIONS`（扩张区域）、`G.BIOMES`（地图配色/光照/装饰色） |
 | `js/models.js` | `G.M`：所有低多边形模型工厂（塔、敌人、仙子、古树、传送门、树木/仙人掌/雪人、陨石、曳光弹），以及材质工具 `M.mat` / `M.glow` / `M.lin` |
 | `js/audio.js` | `G.Audio`：WebAudio 程序合成音效，`A.play('name')` |
-| `js/music.js` | `G.Music`：背景音乐。小型步进音序器 + 合成乐器，曲目 `title / forest / desert / snow`（`SONGS`），强度 `setIntensity(0 备战 / 1 战斗 / 2 Boss)` 由波次开始/结束驱动；`setMode('title'|'game')` 在小节线上换曲。若存在 `assets/audio/bgm_<曲目>.mp3` 则改播文件。首次点击/按键后才开始；切后台自动暂停。`Mu._render(曲目, 强度, 秒)` 可离线渲染测音量 |
+| `js/music.js` | `G.Music`：背景音乐。小型步进音序器 + 合成乐器（含合成钢琴 `I.piano`：标题曲是写好旋律的钢琴小品，森林备战阶段也用钢琴），曲目 `title / forest / desert / snow`（`SONGS`），强度 `setIntensity(0 备战 / 1 战斗 / 2 Boss)` 由波次开始/结束驱动；`setMode('title'|'game')` 在小节线上换曲。若存在 `assets/audio/bgm_<曲目>.mp3` 则改播文件。首次点击/按键后才开始；切后台自动暂停。`Mu._render(曲目, 强度, 秒)` 可离线渲染测音量 |
 | `js/fx.js` | `G.FX`：粒子池、闪光、柔边光环、光带拖尾、闪电、飘字 |
 | `js/terrain.js` | `G.Terrain`：地面高度图网格（含高地）、上色、水面、实例化装饰、外围森林、建造网格、扩张空位预览 |
+| `js/grass.js` | `G.Grass`：风吹草地（实例化草簇，风在顶点着色器里算）+ 云影（`Grass.cloudify(材质)` 给地面材质打补丁） |
 | `js/world.js` | `G.World`：地块数据、区域/开拓、传送门定位、寻路距离场、敌人路线光点、地块模型（树/岩石/水晶） |
 | `js/game.js` | `G.S` 游戏状态；`Enemy` / `Tower` / `Proj` 类；英雄 `G.Hero`；波次；玩家操作 `G.act.*`；手牌与区域扩张逻辑 |
 | `js/omenfx.js` | `G.OmenFX`：天象的表现层——屏幕中央揭示卡片、全屏色调（`.veil.v-*`）、战场氛围粒子 / 风 / 雨 / 雾 / 极光、敌人着色、落雷 `G.lightning`。包装了 `G.update` 每帧驱动 |
+| `js/guide.js` | `G.Guide`：左上角 ✦ 操作指引（新的一局开始时 `Guide.start()`，按游戏状态自动推进，做完淡出） |
 | `js/ui.js` | `G.UI`：HUD、建造栏、手牌栏、扩张面板、塔面板、提示框、标题画面交互、鼠标键盘输入、悬停预览 |
 | `js/main.js` | 渲染器、场景、灯光、后处理管线、生物群系切换、镜头、`G.newMap` / `G.beginRun` / 缩略图、主循环 |
 
@@ -70,6 +72,9 @@
 - **生物群系**：`G.applyBiome(b)` 切换天空、雾、灯光并调用 `T.setBiome(b)` 换配色。新增地图主要是在 `G.BIOMES` 加一项 + `models.js` 的 `M.tree` 分支 + `terrain.js` 里装饰/外围森林的分支。
 - **光点/飘雪**：`world.js` 的 `Wd.fireflies`；`snowfall: true` 的地图改为下落的雪花。
 
+- **风吹草地**（`grass.js`）：每簇草属于某个地块的"地面层"（`aTile.z=0`）、"顶面层"（1）或地图外（2）。高度与显隐不写进实例矩阵，而是从一张 28×20 的浮点纹理读（R 地面高度 G 地面可见 B 顶面高度 A 顶面可见：1 全显 / 0.5 有塔只留外圈）。`T.updateDecor()` 里会调用 `Grass.sync()` 刷新这张纹理，所以升降、铺路、建塔都会自动生效。每张地图的草在 `SETS[biome]` 里配（高度、密度、颜色），**新增地图时要加一项**。草的法线统一朝上、正反面同样受光，避免一片亮一片黑。
+- **云影**：`Grass.cloudify(mat)` 在 Phong / Lambert 材质的直射光部分乘上缓慢移动的噪声云影，目前只用于精细地面、外围地面和草；强度在 `CLOUD_AMT[biome]`。
+- **转场**：`G.fadeVeil(fn)` 夜空色幕布淡入→执行 fn→淡出。`G.beginRun()` 默认走转场（第二个参数 `true` 表示立即开始，调试用）；开局镜头只做推近 + 俯仰（`G.cam.pitchGoal`），**不旋转**，避免眩晕。
 - **月光古树**（`M.heart`）：比其他模型精细，用平滑着色的渐细管子 `M.taperTube` 做双股缠绕树干 / 枝 / 根，树冠是 56 片菱形水晶（外壳半透明 + 内部发光晶核）+ 约 300 片细碎发光小叶（一个 InstancedMesh，沿枝条撒开），其中一部分在 `orbitA/orbitB` 里绕树环绕。动画在 `world.js` 的 `Wd.update`：月牙始终朝向镜头；**水晶亮着的数量 = 剩余生命比例**，掉血时逐片熄灭。
 - **网页图标**：`assets/favicon.svg`（主图标）+ `assets/favicon-32.png`（不支持 SVG 图标的浏览器用）。
 

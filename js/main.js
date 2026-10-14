@@ -137,15 +137,32 @@
     G.UI.thumbs = thumbs;
   };
 
-  G.beginRun = function () {
+  // 场景转场：一层夜空色的幕布淡入，遮住时执行 fn，然后淡出
+  G.fadeVeil = function (fn) {
+    let v = document.getElementById('fade-veil');
+    if (!v) { v = document.createElement('div'); v.id = 'fade-veil'; document.getElementById('app').appendChild(v); }
+    v.classList.add('on');
+    setTimeout(() => { fn(); requestAnimationFrame(() => v.classList.remove('on')); }, 520);
+  };
+  G.beginRun = function (seed, now) {
+    if (now !== true) {
+      if (G._fading) return;
+      G._fading = true;
+      G.fadeVeil(() => { G._fading = false; G.beginRun(seed, true); });
+      return;
+    }
     document.getElementById('screen-title').hidden = true;
     document.body.classList.remove('on-title');
     camera.clearViewOffset();
     G.Music.setMode('game');
     S.phase = 'prep';
-    G.cam.yaw = 0; G.cam.pitch = 0.98; G.camFit();
+    // 镜头从高处缓缓降下、推近到地图（只做推拉和俯仰，不旋转，避免眩晕）
+    G.cam.yaw = 0; G.camFit();
+    G.cam.pitch = 1.22; G.cam.pitchGoal = 0.98;
+    G.cam.dist = G.cam.goal.dist * 1.55; G.cam.goal.slow = true;
     G.startRun();
     G.UI.refresh();
+    G.Guide.start();
     G.UI.banner('备战阶段', '用下方的地形块搭出高地、拉长敌人路线，再在高地上建塔。准备好后按 空格 开战');
     setTimeout(() => { if (S.wave === 0) G.UI.toast('提示：右键点击地图可以让露娜飞过去', ''); }, 4500);
   };
@@ -155,6 +172,7 @@
     for (const id of ['modal-bless', 'help', 'screen-end', 'region-panel']) document.getElementById(id).hidden = true;
     document.getElementById('banner').classList.remove('show');
     S.paused = false;
+    G.Guide.stop();
     try { G.makeThumbs(G.UI.seed, [G.biome]); } catch (e) { /* 忽略 */ }
     G.newMap(G.UI.seed);
     document.getElementById('screen-title').hidden = false;
@@ -195,6 +213,7 @@
     G.FX.update(gdt || (S.phase === 'title' ? dt : 0));
     Wd.updateDots(time, S.phase !== 'combat');
     G.UI.frame(dt);
+    G.Guide.update(dt);
 
     const c = G.cam;
     if (S.phase === 'title') {
@@ -204,8 +223,12 @@
       c.dist = G.fitDist() * 1.05;
       camera.setViewOffset(window.innerWidth, window.innerHeight, 0, -window.innerHeight * 0.24, window.innerWidth, window.innerHeight);
     }
+    if (c.pitchGoal !== undefined) {
+      c.pitch += (c.pitchGoal - c.pitch) * Math.min(1, dt * 1.8);
+      if (Math.abs(c.pitchGoal - c.pitch) < 0.002) { c.pitch = c.pitchGoal; c.pitchGoal = undefined; }
+    }
     if (c.goal) {
-      const k = Math.min(1, dt * 3);
+      const k = Math.min(1, dt * (c.goal.slow ? 1.6 : 3));
       c.target.x += (c.goal.x - c.target.x) * k; c.target.z += (c.goal.z - c.target.z) * k;
       c.dist += (c.goal.dist - c.dist) * k;
       if (Math.abs(c.goal.dist - c.dist) < 0.05 && Math.abs(c.goal.x - c.target.x) < 0.05) c.goal = null;
