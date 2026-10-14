@@ -11,17 +11,17 @@ G.CFG = {
   MAX_H: 3,              // 最高地势
   START_GOLD: 230,
   START_LEY: 8,
-  LEY_PER_WAVE: 3,
+  LEY_PER_WAVE: 4,
   HAND_MAX: 6,           // 地形手牌上限
   HAND_START: 4,         // 开局手牌
-  DRAW_PER_WAVE: 2,      // 每波结束抽几张
+  DRAW_PER_WAVE: 3,      // 每波结束抽几张
   REROLL_COST: 2,        // 重抽手牌 / 重刷区域的地脉能量花费
   EXPAND_EVERY: 2,       // 每隔几波获得一次区域扩张
   START_LIVES: 20,
   // 地势加成（下标 = 地势等级；塔只能建在 1 级以上，1 级为基准）
   HEIGHT_RANGE: [1, 1, 1.2, 1.4],
   HEIGHT_DMG:   [1, 1, 1.15, 1.3],
-  PORTAL_B_WAVE: 6,      // 第二个传送门开启的波次
+  PORTAL_B_WAVE: 4,      // 第二个传送门开启的波次
   FLY_Y: 1.5,
   SELL_RATE: 0.7,
   // 兵量：每组普通敌人数量 ×3（特殊兵种可用 countMul 再乘一个系数，例如投石地精只 ×1.5）；为了平衡，单个敌人的生命与金叶相应降低，出怪间隔变密
@@ -36,8 +36,10 @@ G.NUKE = { name: '星核坠击', icon: '☄️', key: 'G', cost: 260, costUp: 12
   desc: '从星空召唤一颗燃烧的星核，砸向目标区域：对范围内所有敌人（包括飞行单位）造成巨额魔法伤害并击退、眩晕。对 Boss 伤害减半。' };
 
 // 每波怪物生命倍率（Boss 不吃这个倍率）
-G.hpMul = w => 1 + 0.13 * (w - 1) + 0.014 * (w - 1) * (w - 1);
-G.goldMul = w => 1 + 0.04 * (w - 1);
+// 10 波走完原来 15 波的成长曲线：第 w 波相当于原来的第 1 + (w-1)×14/9 波
+G.oldWave = w => 1 + (w - 1) * 14 / 9;
+G.hpMul = w => { const o = G.oldWave(w) - 1; return 1 + 0.13 * o + 0.014 * o * o; };
+G.goldMul = w => 1 + 0.04 * (G.oldWave(w) - 1);
 
 G.TOWERS = {
   archer: {
@@ -129,8 +131,9 @@ G.ENEMIES = {
               desc: '最终 Boss：每秒回复生命，并不断召唤哥布林。放过它就失败。' },
 };
 
-// 每组：[类型, 数量, 间隔秒, 开始延迟秒]
-G.WAVES = [
+// 进攻段落（原来的 15 波）：每组 [类型, 基础数量, 间隔秒, 开始延迟秒]。
+// 真正的波次由下面的 buildWaves() 把 3 段串成一波，共 10 波——每波大约是一段的 3 倍长
+G.WAVE_SEGMENTS = [
   [['goblin', 14, 0.75, 0]],
   [['goblin', 16, 0.6, 0], ['wolf', 6, 0.6, 8]],
   [['wolf', 12, 0.5, 0], ['goblin', 12, 0.6, 4], ['slinger', 4, 1.2, 8]],
@@ -147,6 +150,37 @@ G.WAVES = [
   [['wolf', 30, 0.28, 0], ['orc', 16, 0.8, 3], ['skeleton', 14, 0.7, 6], ['golem', 1, 1, 8], ['ogre', 1, 1, 16], ['shaman', 6, 1.6, 5]],
   [['goblin', 26, 0.4, 0], ['orc', 12, 1.0, 4], ['troll', 1, 1, 8], ['lich', 1, 1, 20], ['bat', 16, 0.5, 12], ['wisp', 8, 1.4, 10]],
 ];
+// 每波的 Boss（不放在段落里，单独在波次中段登场）：[类型, 出场时间占本波出怪时长的比例]
+G.WAVE_BOSSES = {
+  4: [['golem', 0.5]],
+  6: [['ogre', 0.55]],
+  7: [['lich', 0.5]],
+  8: [['golem', 0.35], ['ogre', 0.7]],
+  9: [['lich', 0.35], ['golem', 0.65]],
+  10: [['lich', 0.3], ['troll', 0.6]],
+};
+G.WAVE_COUNT = 10;
+G.SEGMENT_GAP = 3;   // 段与段之间的喘息时间（秒）
+// 第 k 波（从 1 开始）使用第 3k-2 ~ 3k 个"槽位"，30 个槽位依次对应段落 1,1,2,2,3,3…15,15，难度平滑上升
+G.buildWaves = function () {
+  const C = G.CFG, segs = G.WAVE_SEGMENTS;
+  const groupEnd = ([type, c0, i0, d]) => d + (c0 * C.COUNT_MUL * (G.ENEMIES[type].countMul || 1) - 1) * i0 * C.INTERVAL_MUL;
+  const waves = [];
+  for (let k = 0; k < G.WAVE_COUNT; k++) {
+    const groups = [];
+    let t0 = 0;
+    for (let j = 0; j < 3; j++) {
+      const seg = segs[Math.min(segs.length - 1, Math.floor((k * 3 + j) * segs.length / (G.WAVE_COUNT * 3)))]
+        .filter(g => !G.ENEMIES[g[0]].boss);
+      for (const g of seg) groups.push([g[0], g[1], g[2], g[3] + t0]);
+      t0 += Math.max(...seg.map(groupEnd)) + G.SEGMENT_GAP;
+    }
+    for (const [type, at] of G.WAVE_BOSSES[k + 1] || []) groups.push([type, 1, 1, Math.round(t0 * at)]);
+    waves.push(groups);
+  }
+  return waves;
+};
+G.WAVES = G.buildWaves();
 
 // 天象：作用于整波的全场效果。备战阶段就会公布，方便提前应对。
 // kind: curse 凶兆（不利）/ boon 吉兆（有利）/ twist 异象（有利有弊）

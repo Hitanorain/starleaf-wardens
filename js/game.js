@@ -943,7 +943,7 @@
     const omenLine = S.omens.length ? '<br>' + S.omens.map(id => { const o = G.omen(id); return o.icon + ' ' + o.name; }).join('　') : '';
     const newPortal = Wd.portals.find(p => p.openWave === S.wave && S.wave > 1);
     if (newPortal) { A.play('portal'); G.UI.banner(`${newPortal.name}已开启！`, '敌人将从两个方向进攻' + omenLine); }
-    else G.UI.banner(`第 ${S.wave} 波`, groups.map(g => G.ENEMIES[g[0]].name + ' ×' + G.groupCount(g)).join('　') + omenLine);
+    else G.UI.banner(`第 ${S.wave} 波`, G.waveSummary(groups).map(([t, n]) => G.ENEMIES[t].name + ' ×' + n).join('　') + omenLine);
     const boss = groups.some(g => G.ENEMIES[g[0]].boss);
     if (boss) setTimeout(() => G.UI.toast('⚠ Boss 来袭！', 'warn'), 1500);
     G.Music.setIntensity(boss ? 2 : 1);   // 配乐进入战斗版（Boss 波更激烈）
@@ -969,7 +969,7 @@
   };
   G.waveCleared = function () {
     const crystals = Wd.tiles.filter(t => t.type === 'crystal' && !t.locked).length;
-    const bonus = 20 + 4 * S.wave + crystals * 15;
+    const bonus = 30 + 9 * S.wave + crystals * 25;   // 每波更长，奖励也更多
     const ley = CFG.LEY_PER_WAVE + S.mods.leyBonus + crystals * 2;
     S.gold += bonus; S.ley += ley;
     // 塔在波次间隙自动修复一部分
@@ -1010,6 +1010,12 @@
 
   // ======================= 天象（整波的全场效果） =======================
   G.omen = id => G.OMENS.find(o => o.id === id);
+  // 一波里同一种敌人可能出现在好几段，合并成 [[类型, 总数], …]（Boss 排在最后）
+  G.waveSummary = function (groups) {
+    const m = new Map();
+    for (const g of groups) m.set(g[0], (m.get(g[0]) || 0) + G.groupCount(g));
+    return [...m].sort((a, b) => (G.ENEMIES[a[0]].boss ? 1 : 0) - (G.ENEMIES[b[0]].boss ? 1 : 0));
+  };
   G.groupCount = g => G.ENEMIES[g[0]].boss ? g[1] : Math.round(g[1] * CFG.COUNT_MUL * (G.ENEMIES[g[0]].countMul || 1) * S.om.count);
   G.applyOmens = function () {
     const om = S.om = Object.assign({}, G.OMEN_DEFAULT);
@@ -1023,8 +1029,8 @@
       }
     }
   };
-  // 第 1~2 波风平浪静；3~8 波一个天象（凶兆 50% / 吉兆 30% / 异象 20%）；
-  // 9 波起必有一个凶兆，另加一个吉兆（60%）或异象（40%）。不会连续两波出现同一个天象
+  // 第 1 波风平浪静；2~5 波一个天象（凶兆 50% / 吉兆 30% / 异象 20%）；
+  // 6 波起必有一个凶兆，另加一个吉兆（60%）或异象（40%）。不会连续两波出现同一个天象
   G.rollOmens = function (n) {
     const pick = kind => {
       const fresh = o => o.kind === kind && !S.omens.includes(o.id);
@@ -1034,8 +1040,8 @@
     };
     S.lastOmens = S.omens;
     S.omens = []; S.purged = false;
-    if (n >= 3 && n <= 8) { const r = Math.random(); pick(r < 0.5 ? 'curse' : r < 0.8 ? 'boon' : 'twist'); }
-    else if (n >= 9) { pick('curse'); pick(Math.random() < 0.6 ? 'boon' : 'twist'); }
+    if (n >= 2 && n <= 5) { const r = Math.random(); pick(r < 0.5 ? 'curse' : r < 0.8 ? 'boon' : 'twist'); }
+    else if (n >= 6) { pick('curse'); pick(Math.random() < 0.6 ? 'boon' : 'twist'); }
     G.applyOmens();
   };
   // 落雷（G.lightning）的实现在 omenfx.js

@@ -184,7 +184,7 @@
       const twoPortals = Wd.portals[1].openWave <= n;
       wp.hidden = false;
       wp.innerHTML = `<div class="wp-title">下一波 · 第 ${n} 波${twoPortals ? '<span class="tag">双向进攻</span>' : ''}</div>
-        <div class="wp-list">${next.map(g => `<span class="chip" data-tip="enemy:${g[0]}">${enemyIc(g[0])}×${G.groupCount(g)}</span>`).join('')}</div>
+        <div class="wp-list">${G.waveSummary(next).map(([t, n]) => `<span class="chip ${G.ENEMIES[t].boss ? 'boss' : ''}" data-tip="enemy:${t}">${enemyIc(t)}×${n}</span>`).join('')}</div>
         ${omenHtml(true)}
         <button id="btn-start2" class="primary">⚔ 开始战斗 <kbd>空格</kbd></button>`;
       $('#btn-start2').onclick = () => G.startWave();

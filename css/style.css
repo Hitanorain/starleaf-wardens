@@ -564,3 +564,4 @@ body.on-title #omen-veils, body.on-title #omen-reveal { display: none !important
   background: radial-gradient(circle at 50% 50%, #fffbe8 0%, #ffd27a 45%, rgba(255,120,40,0.6) 100%); }
 #screen-flash.go { animation: nuke-flash 1.1s ease-out; }
 @keyframes nuke-flash { 0% { opacity: 0; } 8% { opacity: .85; } 100% { opacity: 0; } }
+.wp-list .chip.boss { border-color: rgba(255, 123, 224, 0.6); box-shadow: 0 0 8px rgba(255, 79, 216, 0.35); }

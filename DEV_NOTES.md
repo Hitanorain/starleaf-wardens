@@ -92,12 +92,13 @@
 
 ## 6.5 塔的生命、敌人的干扰能力、星核坠击（2026-10-14 加入）
 - **兵量**：`CFG.COUNT_MUL = 3`，单个普通敌人生命 × `ENEMY_HP`、金叶 × `ENEMY_GOLD`、出怪间隔 × `INTERVAL_MUL`。敌人可用 `countMul` 单独再乘一个系数（蝙蝠、投石地精、迷雾萨满、噤声精怪都是 0.5，即只 ×1.5——飞行单位和干扰兵 ×3 时太强）。`G.WAVES` 里写的仍是"基础数量"，`G.groupCount()` 给出实际数量。
+- **波次结构（10 波）**：`G.WAVE_SEGMENTS` 是 15 段进攻（即原来的 15 波，不含 Boss），`G.buildWaves()` 把 30 个槽位（段落 1,1,2,2…15,15）按顺序每 3 个串成一波，段与段之间隔 `G.SEGMENT_GAP` 秒；Boss 写在 `G.WAVE_BOSSES[波次]`，按本波出怪时长的比例在中段登场。每波出怪约 45~65 秒（打完约 1~1.5 分钟）。生命 / 金叶成长用 `G.oldWave(w)` 把 10 波映射到原来 15 波的曲线上。界面上同一种敌人合并显示（`G.waveSummary`）。
 - **塔的生命 / 护甲**：写在 `G.TOWERS[type].levels[i].hp / armor`。`tower.hurt(amt, type)`（物理伤害按护甲减免）、`tower.destroy()`（生命归零：移除塔、统计 `S.stats.lost`）。升级时增加的最大生命直接加到当前生命上。每波结束自动恢复 `CFG.TOWER_HEAL`；`G.act.repair(tw)` 花金叶修满（`G.repairCost`）。
 - **塔的干扰状态**：`fogT`（迷雾萨满光环，`stats()` 里攻速 ×0.6）、`silenceT`（噤声：不能攻击，塔上绕着紫黑锁链 `tower.chains`）、`stunT`（熔岩巨像重踏：不能攻击）。这几个计时器每帧在 `Tower.update` 开头处理。
 - **敌人的能力**在 `Enemy.abilities(dt)`：`sling`（向塔扔石块，`Shot` 类，和弹道一起放在 `S.projectiles`）、`fogAura`、`silence`、`slam`；召唤沿用 `summon`（亡灵巫王召唤骷髅盾卫）。冰冻/眩晕时不会使用能力。
 - **冰冻**：`enemy.freeze(dur)` 罩上 `M.iceBlock()` 并设置 `stunT`；Boss 只冻 30%；解冻后 `thawT` 1.6 秒内免疫。`chillT`（霜铃塔减速）期间身体泛冰蓝（`CHILL` 自发光色）。霜铃塔 3 级的"寒蚀"通过 `brittle / brittleT` 在 `G.damage` 里降低物理护甲。
 - **星核坠击** `G.NUKE`：`G.act.nuke(p)` 扣金叶（每用一次涨价 `costUp`）、进入冷却，1.6 秒后 `G.nukeImpact()` 落地。界面上是露娜技能旁的 ☄️ 按钮，快捷键 G，`UI.tool = 'cast:nuke'`。
-- 平衡用控制台机器人测过（自动摆地形、建塔、开战），三张地图都能通关但会掉塔、漏怪；之后以真人试玩反馈为准再调。
+- 平衡用控制台机器人测过（自动摆地形、建塔、开战）：结果随地图和随机事件波动很大，大部分能通关、有时在第 3~5 波被蝙蝠打穿；之后以真人试玩反馈为准再调。
 
 ## 7. 界面
 - 当前工具是一个字符串 `UI.tool`：`raise` / `lower` / `tower:<type>` / `piece:<手牌下标>` / `region:<候选下标>` / `cast:q`。`R` 旋转修改 `UI.rot`。

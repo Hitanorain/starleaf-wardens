@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=19">
+<link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body>
 <div id="app">
@@ -19,7 +19,7 @@
     <div class="res" data-tip="月光古树的生命。敌人到达古树会扣除生命，归零即失败。"><span>💚</span><b id="r-lives">20</b></div>
     <div class="res" data-tip="金叶：建塔和升级用。击杀敌人、完成波次都会获得。"><span>🍂</span><b id="r-gold">0</b></div>
     <div class="res" data-tip="地脉能量：隆起或削低地块用。每波结束后补充。"><span>💠</span><b id="r-ley">0</b></div>
-    <div class="res" data-tip="当前波次 / 总波次"><span>🌙</span><b id="r-wave">1 / 15</b></div>
+    <div class="res" data-tip="当前波次 / 总波次"><span>🌙</span><b id="r-wave">1 / 10</b></div>
     <div class="res path" data-tip="敌人的路线长度（格）。路线越长，塔的输出时间越多。"><span>👣</span><b id="r-path">0</b></div>
     <div class="ctrls">
       <button id="btn-speed" data-tip="游戏速度（F）">▶ 1x</button>
@@ -128,7 +128,7 @@
       <h3>核心规则</h3>
       <ul>
         <li>敌人沿最短路线走向古树；地势 ≥1 的地块不能通行。地面上的金色光点就是它们的路线。</li>
-        <li>不能把路完全堵死。紫色光点是还没开启的传送门（第 6 波开启）的路线。</li>
+        <li>不能把路完全堵死。紫色光点是还没开启的传送门（第 4 波开启）的路线。</li>
         <li>塔建在 2 级高地：射程 +20%、伤害 +15%；3 级高地：射程 +40%、伤害 +30%。</li>
         <li>塔有生命和护甲：投石地精、熔岩巨像会攻击塔，生命归零塔就会被摧毁。选中塔可以花金叶修理，每波结束也会自动修复一部分。</li>
         <li>迷雾萨满会降低附近塔的攻速，噤声精怪会让塔暂时无法攻击——优先消灭它们。</li>
@@ -147,18 +147,18 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="js/config.js?v=19"></script>
-<script src="js/models.js?v=19"></script>
-<script src="js/audio.js?v=19"></script>
-<script src="js/music.js?v=19"></script>
-<script src="js/fx.js?v=19"></script>
-<script src="js/terrain.js?v=19"></script>
-<script src="js/grass.js?v=19"></script>
-<script src="js/world.js?v=19"></script>
-<script src="js/game.js?v=19"></script>
-<script src="js/omenfx.js?v=19"></script>
-<script src="js/guide.js?v=19"></script>
-<script src="js/ui.js?v=19"></script>
-<script src="js/main.js?v=19"></script>
+<script src="js/config.js?v=20"></script>
+<script src="js/models.js?v=20"></script>
+<script src="js/audio.js?v=20"></script>
+<script src="js/music.js?v=20"></script>
+<script src="js/fx.js?v=20"></script>
+<script src="js/terrain.js?v=20"></script>
+<script src="js/grass.js?v=20"></script>
+<script src="js/world.js?v=20"></script>
+<script src="js/game.js?v=20"></script>
+<script src="js/omenfx.js?v=20"></script>
+<script src="js/guide.js?v=20"></script>
+<script src="js/ui.js?v=20"></script>
+<script src="js/main.js?v=20"></script>
 </body>
 </html>
