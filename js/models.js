@@ -738,6 +738,72 @@
       arm.rotation.x = 0.5;
       r.arm = arm; r.crystal = crystal; r.head = head;
       r.muzzle.position.set(0, pivotY + 0.2, -0.4); head.add(r.muzzle);
+
+    } else if (type === 'chime') {
+      // 霜铃塔：冰晶拱门下悬着一口冰铃（铃会摆动，摇响时放出寒霜涟漪）
+      const stone = M.mat(0x8f9ab8), stone2 = M.mat(0xb4c0da);
+      const ice = M.mat(0xbfe6ff, { emissive: 0x3a86c8, emissiveIntensity: 0.45, shininess: 60, specular: 0x6699cc });
+      part(g, GEO.cyl8, stone, [0, 0.07, 0], [0.4, 0.14, 0.4]);
+      part(g, GEO.cyl8, stone2, [0, 0.16, 0], [0.32, 0.05, 0.32]);
+      const H = [0.72, 0.88, 1.02][level];
+      const posts = level < 2 ? [[0.24, 0], [-0.24, 0]] : [0, 1, 2].map(i => [Math.cos(i * 2.094 + 0.5) * 0.26, Math.sin(i * 2.094 + 0.5) * 0.26]);
+      for (const [x, z] of posts) {
+        part(g, GEO.taper4, ice, [x, 0.18 + H / 2, z], [0.06, H, 0.06], [0, Math.PI / 4, 0]);
+        part(g, GEO.oct, M.glow(0xcff4ff, 1, false, 1.6), [x, 0.2 + H + 0.06, z], [0.05, 0.1, 0.05]).castShadow = false;
+        if (level >= 1) part(g, GEO.oct, ice, [x * 1.25, 0.24, z * 1.25], [0.05, 0.12, 0.05], [0.3, 0, 0.2]);
+      }
+      // 横梁：两柱时是一根，三柱时是一个三角环
+      if (level < 2) part(g, GEO.box, ice, [0, 0.18 + H, 0], [0.56, 0.05, 0.07]);
+      else part(g, new THREE.TorusGeometry(0.26, 0.03, 4, 3), ice, [0, 0.18 + H, 0], 1, [Math.PI / 2, 0, 0.5]);
+      // 冰铃（枢轴在顶部，摆动时绕 z 轴）
+      const bell = new THREE.Group(); bell.position.set(0, 0.16 + H, 0); g.add(bell);
+      part(bell, GEO.cyl6, stone, [0, -0.04, 0], [0.012, 0.08, 0.012]);
+      const bs = [0.11, 0.13, 0.15][level];
+      part(bell, new THREE.CylinderGeometry(0.45, 1, 1.1, 12, 1, true), M.mat(0xdff4ff, { emissive: 0x4aa8ff, emissiveIntensity: 0.55, side: THREE.DoubleSide, shininess: 80 }), [0, -0.08 - bs * 0.55, 0], [bs, bs, bs]);
+      part(bell, GEO.sphere, M.mat(0xdff4ff, { emissive: 0x4aa8ff, emissiveIntensity: 0.5 }), [0, -0.08, 0], [bs * 0.5, bs * 0.35, bs * 0.5]);
+      part(bell, GEO.sphere, M.glow(0xffffff, 1, false, 2.2), [0, -0.1 - bs * 1.05, 0], bs * 0.28).castShadow = false;   // 铃舌
+      part(bell, GEO.sphere, M.glow(0x8fdcff, 0.35, true, 1.6), [0, -0.08 - bs * 0.6, 0], bs * 1.4).castShadow = false;  // 冷光
+      r.bell = bell;
+      if (level === 2) {   // 顶上旋转的雪花
+        const flake = new THREE.Group(); flake.position.y = 0.42 + H; g.add(flake);
+        for (let i = 0; i < 3; i++) part(flake, GEO.box, M.glow(0xe8fbff, 1, false, 2), [0, 0, 0], [0.26, 0.025, 0.025], [0, 0, i * Math.PI / 3]).castShadow = false;
+        part(flake, GEO.oct, M.glow(0xffffff, 1, false, 2.4), [0, 0, 0], 0.05).castShadow = false;
+        spin(bob(flake, 0.05, 1.6), 1.2, 'z');
+      }
+      r.muzzle.position.set(0, 0.08 + H - bs, 0); g.add(r.muzzle);
+
+    } else if (type === 'frost') {
+      // 凛冬尖碑：冰岩台座上耸立的冰晶尖碑，周围有冰棱环绕
+      const rock = M.mat(0x6a7896), rock2 = M.mat(0x8a98b8);
+      const ice = M.mat(0xc8ecff, { emissive: 0x3f8fd8, emissiveIntensity: 0.5, shininess: 70, specular: 0x88aadd });
+      const ice2 = M.mat(0x9fd8ff, { emissive: 0x2a70c0, emissiveIntensity: 0.45, shininess: 70 });
+      part(g, GEO.cyl6, rock, [0, 0.08, 0], [0.42, 0.16, 0.42]);
+      part(g, GEO.dodec, rock2, [0.22, 0.17, 0.12], 0.1);
+      part(g, GEO.dodec, rock2, [-0.18, 0.16, -0.16], 0.08);
+      const H = [0.85, 1.1, 1.3][level];
+      part(g, GEO.oct, ice, [0, 0.16 + H / 2, 0], [0.13 + level * 0.02, H / 2, 0.13 + level * 0.02]);
+      // 侧面冰棱
+      const n = [2, 4, 6][level];
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2 + 0.4, h = 0.28 + (i % 2) * 0.12 + level * 0.05;
+        part(g, GEO.oct, i % 2 ? ice : ice2, [Math.cos(a) * 0.2, 0.16 + h / 2, Math.sin(a) * 0.2], [0.05, h / 2, 0.05], [Math.sin(a) * 0.35, 0, -Math.cos(a) * 0.35]);
+      }
+      const top = 0.2 + H;
+      const core = part(g, GEO.oct, M.glow(0xe8fbff, 1, false, 2.2), [0, top + 0.12, 0], [0.07, 0.12, 0.07]);
+      core.castShadow = false; spin(bob(core, 0.05, 2), 1.6);
+      if (level >= 1) {   // 环绕的冰棱
+        const orbit = new THREE.Group(); orbit.position.y = top - 0.15; g.add(orbit);
+        const k = level === 1 ? 2 : 3;
+        for (let i = 0; i < k; i++) part(orbit, GEO.oct, M.glow(0xbfeaff, 1, false, 1.7), [Math.cos(i / k * 6.283) * 0.36, 0, Math.sin(i / k * 6.283) * 0.36], [0.035, 0.09, 0.035]).castShadow = false;
+        spin(orbit, 1.8);
+      }
+      if (level === 2) {  // 地面寒霜法阵
+        const circle = part(g, new THREE.RingGeometry(0.3, 0.38, 6), M.glow(0x9fe4ff, 0.8, true, 1.6), [0, 0.17, 0], 1, [-Math.PI / 2, 0, 0]);
+        circle.castShadow = false; spin(circle, -0.9, 'z');
+        const ring = part(g, new THREE.TorusGeometry(0.22, 0.012, 4, 24), M.glow(0xe8fbff, 0.9, true, 1.8), [0, top + 0.12, 0], 1, [Math.PI / 2, 0, 0]);
+        ring.castShadow = false; spin(ring, 1.3, 'x');
+      }
+      r.muzzle.position.set(0, top + 0.12, 0); g.add(r.muzzle);
     }
     // 等级标记：金色小宝石
     for (let i = 0; i <= level; i++) {
@@ -853,10 +919,97 @@
       r.legs.push(part(body, GEO.box, dark, [0.13, 0.08, 0], [0.15, 0.18, 0.15]));
       r.legs.push(part(body, GEO.box, dark, [-0.13, 0.08, 0], [0.15, 0.18, 0.15]));
     }
+    else if (type === 'slinger') {
+      // 投石地精：皮帽、背着石袋，挥动投石索的手臂（r.arm）
+      const skin = mm(0x8fb84a), leather = mm(0x7a5034);
+      part(body, GEO.box, leather, [0, 0.2, 0], [0.24, 0.22, 0.2]);
+      part(body, GEO.ico0, skin, [0, 0.41, 0.02], 0.14);
+      part(body, GEO.cone8, leather, [0, 0.52, 0], [0.13, 0.1, 0.13]);
+      part(body, GEO.cone4, skin, [0.15, 0.44, 0], [0.035, 0.14, 0.035], [0, 0, -1.3]);
+      part(body, GEO.cone4, skin, [-0.15, 0.44, 0], [0.035, 0.14, 0.035], [0, 0, 1.3]);
+      part(body, GEO.box, eye, [0.05, 0.43, 0.13], 0.03);
+      part(body, GEO.box, eye, [-0.05, 0.43, 0.13], 0.03);
+      part(body, GEO.ico0, mm(0x9a7a5a), [0, 0.24, -0.15], [0.12, 0.13, 0.1]);       // 石袋
+      for (let i = 0; i < 3; i++) part(body, GEO.dodec, mm(0x8a8478), [(i - 1) * 0.05, 0.36, -0.15], 0.035);
+      const arm = new THREE.Group(); arm.position.set(0.15, 0.3, 0); body.add(arm);
+      part(arm, GEO.box, skin, [0, 0.08, 0], [0.05, 0.18, 0.05]);
+      part(arm, GEO.cyl6, mm(0xc9b48a), [0, 0.22, 0], [0.006, 0.14, 0.006]);
+      part(arm, GEO.dodec, mm(0x8a8478), [0, 0.3, 0], 0.04);
+      r.arm = arm;
+      r.legs.push(part(body, GEO.box, skin, [0.07, 0.05, 0], [0.07, 0.12, 0.07]));
+      r.legs.push(part(body, GEO.box, skin, [-0.07, 0.05, 0], [0.07, 0.12, 0.07]));
+    } else if (type === 'shaman') {
+      // 迷雾萨满：佝偻的紫袍法师，骨面具，法杖顶端是紫色雾珠
+      const robe = mm(0x4a2f6a), robe2 = mm(0x6a4a8f), bone = mm(0xe8e0c8);
+      part(body, GEO.cone8, robe, [0, 0.25, 0], [0.2, 0.5, 0.2]);
+      part(body, GEO.cone8, robe2, [0, 0.42, -0.02], [0.16, 0.3, 0.16]);
+      part(body, GEO.sphere, robe, [0, 0.52, 0.03], [0.12, 0.11, 0.12]);                  // 兜帽
+      part(body, GEO.box, bone, [0, 0.5, 0.12], [0.11, 0.12, 0.03]);                     // 面具
+      part(body, GEO.box, M.glow(0xd08fff), [0.03, 0.52, 0.14], 0.025);
+      part(body, GEO.box, M.glow(0xd08fff), [-0.03, 0.52, 0.14], 0.025);
+      for (const sx of [1, -1]) part(body, GEO.cone4, bone, [sx * 0.06, 0.6, 0.06], [0.015, 0.08, 0.015], [0.3, 0, -sx * 0.4]);
+      part(body, GEO.cyl6, mm(0x5a4030), [0.17, 0.35, 0.06], [0.018, 0.7, 0.018]);
+      part(body, GEO.ico1, M.glow(0xc070ff, 1, false, 2), [0.17, 0.72, 0.06], 0.06);
+      part(body, GEO.ico1, M.glow(0x9a4dff, 0.3, true, 1.5), [0.17, 0.72, 0.06], 0.13);
+      r.legs.push(part(body, GEO.box, robe, [0.06, 0.04, 0], [0.06, 0.08, 0.06]));
+      r.legs.push(part(body, GEO.box, robe, [-0.06, 0.04, 0], [0.06, 0.08, 0.06]));
+      // 脚下的雾环（半径 = 光环范围，按敌人缩放换算）
+      const fog = new THREE.Mesh(new THREE.RingGeometry(0.15, 1, 40), M.glow(0x8a4dff, 0.1, true, 1.0));
+      fog.rotation.x = -Math.PI / 2; fog.position.y = 0.04; g.add(fog);
+      r.fog = fog;
+    } else if (type === 'wisp') {
+      // 噤声精怪：漂浮的暗影球，一只发光的独眼，身后拖着几条触须
+      part(body, GEO.ico1, mm(0x2a1a3d), [0, 0, 0], 0.14);
+      part(body, GEO.ico1, M.glow(0x6a2dbf, 0.3, true, 1.4), [0, 0, 0], 0.22).castShadow = false;
+      part(body, GEO.sphere, M.glow(0xf0e0ff, 1, false, 2), [0, 0.02, 0.11], [0.06, 0.05, 0.03]).castShadow = false;
+      part(body, GEO.sphere, mm(0x1a0a2a), [0, 0.02, 0.135], [0.025, 0.035, 0.01]);
+      const tent = new THREE.Group(); body.add(tent);
+      for (let i = 0; i < 4; i++) {
+        const a = i / 4 * Math.PI * 2;
+        part(tent, GEO.cone4, mm(0x3a2550), [Math.cos(a) * 0.07, -0.14, Math.sin(a) * 0.07 - 0.04], [0.03, 0.22, 0.03], [Math.PI + Math.sin(a) * 0.4, 0, Math.cos(a) * 0.4]);
+      }
+      r.tent = tent;
+    } else if (type === 'golem') {
+      // 熔岩巨像：岩块堆成的巨人，裂缝里透出熔岩光
+      const rock = mm(0x4a4048), rock2 = mm(0x5e5258), lava = M.glow(0xff7a20, 1, false, 2.2);
+      part(body, GEO.dodec, rock, [0, 0.45, 0], [0.34, 0.32, 0.28]);
+      part(body, GEO.dodec, rock2, [0, 0.72, 0.04], [0.18, 0.16, 0.17]);
+      part(body, GEO.box, lava, [0.06, 0.74, 0.17], 0.04);
+      part(body, GEO.box, lava, [-0.06, 0.74, 0.17], 0.04);
+      for (const [x, y, z, rz] of [[0.1, 0.5, 0.27, 0.6], [-0.12, 0.4, 0.26, -0.4], [0.02, 0.32, 0.28, 0.1], [0.2, 0.42, 0.18, 1.1]])
+        part(body, GEO.box, lava, [x, y, z], [0.02, 0.14, 0.02], [0, 0, rz]).castShadow = false;
+      part(body, GEO.ico0, lava, [0, 0.5, -0.12], 0.12).castShadow = false;                                // 背后熔岩核心
+      for (const sx of [1, -1]) {
+        part(body, GEO.dodec, rock2, [sx * 0.36, 0.58, 0], 0.13);                                           // 肩
+        part(body, GEO.dodec, rock, [sx * 0.4, 0.36, 0.04], [0.11, 0.18, 0.11]);                            // 臂
+        part(body, GEO.dodec, rock2, [sx * 0.42, 0.16, 0.08], 0.13);                                        // 拳
+        part(body, GEO.box, lava, [sx * 0.42, 0.2, 0.2], 0.03).castShadow = false;
+      }
+      r.legs.push(part(body, GEO.dodec, rock, [0.13, 0.1, 0], [0.13, 0.13, 0.13]));
+      r.legs.push(part(body, GEO.dodec, rock, [-0.13, 0.1, 0], [0.13, 0.13, 0.13]));
+    } else if (type === 'lich') {
+      // 亡灵巫王：悬浮的黑袍骷髅，金冠，法杖顶端是幽绿魂火
+      const robe = mm(0x1f2a24), robe2 = mm(0x2f4a3a), bone = mm(0xe8e2d0), gold = mm(0xd8b44a, { emissive: 0x6b4a00, emissiveIntensity: 0.5 });
+      part(body, GEO.cone8, robe, [0, 0.36, 0], [0.28, 0.72, 0.28]);
+      part(body, GEO.cone8, robe2, [0, 0.55, 0], [0.22, 0.38, 0.22]);
+      for (const sx of [1, -1]) part(body, GEO.sphere, robe2, [sx * 0.17, 0.66, 0], [0.1, 0.07, 0.1]);   // 肩甲
+      part(body, GEO.sphere, bone, [0, 0.8, 0.02], [0.11, 0.12, 0.11]);
+      part(body, GEO.box, M.glow(0x7affb0), [0.04, 0.81, 0.11], 0.03);
+      part(body, GEO.box, M.glow(0x7affb0), [-0.04, 0.81, 0.11], 0.03);
+      part(body, GEO.cyl8, gold, [0, 0.92, 0], [0.1, 0.04, 0.1]);
+      for (let i = 0; i < 5; i++) { const a = i / 5 * 6.283; part(body, GEO.cone4, gold, [Math.cos(a) * 0.09, 0.97, Math.sin(a) * 0.09], [0.02, 0.07, 0.02]); }
+      part(body, GEO.cyl6, mm(0x3a3028), [0.26, 0.45, 0.1], [0.022, 0.95, 0.022]);
+      part(body, GEO.oct, M.glow(0x5aff9a, 1, false, 2.2), [0.26, 0.98, 0.1], [0.06, 0.1, 0.06]).castShadow = false;
+      part(body, GEO.ico1, M.glow(0x3aff8a, 0.3, true, 1.5), [0.26, 0.98, 0.1], 0.14).castShadow = false;
+      const bubble = new THREE.Mesh(GEO.ico1, M.glow(0x6affb0, 0.12, true));
+      bubble.position.y = 0.5; bubble.scale.setScalar(0.5); body.add(bubble);
+      r.shieldMesh = bubble;
+      r.hover = true;
+    }
     // 脚下腐化阴影光圈
     const ring = new THREE.Mesh(new THREE.CircleGeometry(0.22, 12), M.glow(0x7a2bbf, 0.35, true));
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02;
-    if (type !== 'bat') g.add(ring);
+    if (type !== 'bat' && type !== 'wisp') g.add(ring);
     return r;
   };
 
@@ -938,6 +1091,26 @@
     sp.scale.setScalar(size * 3.2);
     g.add(sp);
     g.userData = { rock, shell };
+    return g;
+  };
+
+  // 冰块：冻住敌人时罩在身上（半透明冰壳 + 内部冷光）
+  const iceGeo = new THREE.IcosahedronGeometry(1, 0);
+  const iceMat = new THREE.MeshPhongMaterial({ color: M.lin(0xcff0ff), emissive: M.lin(0x2a6aa8), emissiveIntensity: 0.6, transparent: true, opacity: 0.55, shininess: 90, specular: 0xaaccff, flatShading: true, depthWrite: false });
+  const iceGlow = M.glow(0x9fe4ff, 0.18, true, 1.4);
+  M.iceBlock = function () {
+    const g = new THREE.Group();
+    const shell = new THREE.Mesh(iceGeo, iceMat);
+    shell.scale.set(0.36, 0.42, 0.36); shell.position.y = 0.3;
+    const glow = new THREE.Mesh(iceGeo, iceGlow);
+    glow.scale.set(0.44, 0.5, 0.44); glow.position.y = 0.3;
+    g.add(shell, glow);
+    return g;
+  };
+  // 投石地精扔出的石块
+  M.stone = function () {
+    const g = new THREE.Group();
+    part(g, GEO.dodec, M.mat(0x8a7a68), [0, 0, 0], 0.07);
     return g;
   };
 

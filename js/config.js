@@ -9,7 +9,7 @@ G.CFG = {
   STEP: 0.42,            // 每级地势的世界高度
   BASE: 0.35,            // 地面板厚度
   MAX_H: 3,              // 最高地势
-  START_GOLD: 170,
+  START_GOLD: 230,
   START_LEY: 8,
   LEY_PER_WAVE: 3,
   HAND_MAX: 6,           // 地形手牌上限
@@ -24,7 +24,16 @@ G.CFG = {
   PORTAL_B_WAVE: 6,      // 第二个传送门开启的波次
   FLY_Y: 1.5,
   SELL_RATE: 0.7,
+  // 兵量：每组普通敌人数量 ×3（特殊兵种可用 countMul 再乘一个系数，例如投石地精只 ×1.5）；为了平衡，单个敌人的生命与金叶相应降低，出怪间隔变密
+  COUNT_MUL: 3, ENEMY_HP: 0.5, ENEMY_GOLD: 0.5, INTERVAL_MUL: 0.45,
+  TOWER_HEAL: 0.35,      // 每波结束，塔自动恢复 35% 最大生命
+  REPAIR_RATE: 0.6,      // 修理费用：缺失生命比例 × 已投入金叶 × 0.6
 };
+
+// 星核坠击：用金叶在局中召唤的毁灭性星核。价格每用一次上涨，有冷却
+G.NUKE = { name: '星核坠击', icon: '☄️', key: 'G', cost: 260, costUp: 120, cd: 40, radius: 3.4, delay: 1.6,
+  dmg: w => 700 + 70 * w, bossMul: 0.5,
+  desc: '从星空召唤一颗燃烧的星核，砸向目标区域：对范围内所有敌人（包括飞行单位）造成巨额魔法伤害并击退、眩晕。对 Boss 伤害减半。' };
 
 // 每波怪物生命倍率（Boss 不吃这个倍率）
 G.hpMul = w => 1 + 0.13 * (w - 1) + 0.014 * (w - 1) * (w - 1);
@@ -35,36 +44,54 @@ G.TOWERS = {
     name: '精灵弓手塔', key: '1', icon: '🏹', dmgType: 'phys', air: true,
     desc: '精灵射手连续放箭，单体物理伤害，可以攻击飞行单位。',
     levels: [
-      { cost: 50,  dmg: 9,  cd: 0.62, range: 3.2 },
-      { cost: 60,  dmg: 15, cd: 0.52, range: 3.4 },
-      { cost: 110, dmg: 22, cd: 0.44, range: 3.6, multi: 2, note: '一次射出 2 支箭' },
+      { hp: 110, armor: 0.1, cost: 50,  dmg: 9,  cd: 0.62, range: 3.2 },
+      { hp: 150, armor: 0.15, cost: 60,  dmg: 15, cd: 0.52, range: 3.4 },
+      { hp: 200, armor: 0.2, cost: 110, dmg: 22, cd: 0.44, range: 3.6, multi: 2, note: '一次射出 2 支箭' },
     ],
   },
   obelisk: {
     name: '星辉方尖碑', key: '2', icon: '🔮', dmgType: 'magic', air: true,
     desc: '凝聚星光的魔法弹，无视护甲，对护盾造成双倍伤害，可以攻击飞行单位。',
     levels: [
-      { cost: 80,  dmg: 26, cd: 1.3, range: 3.0 },
-      { cost: 90,  dmg: 46, cd: 1.2, range: 3.2 },
-      { cost: 150, dmg: 72, cd: 1.1, range: 3.4, chain: 2, note: '星光会弹射 2 个额外目标' },
+      { hp: 130, armor: 0.15, cost: 80,  dmg: 26, cd: 1.3, range: 3.0 },
+      { hp: 180, armor: 0.2, cost: 90,  dmg: 46, cd: 1.2, range: 3.2 },
+      { hp: 240, armor: 0.25, cost: 150, dmg: 72, cd: 1.1, range: 3.4, chain: 2, note: '星光会弹射 2 个额外目标' },
     ],
   },
   thorn: {
     name: '荆棘藤蔓', key: '3', icon: '🌿', dmgType: 'magic', air: false, pulse: true,
     desc: '周期性地刺出荆棘，伤害并减速范围内所有地面敌人。',
     levels: [
-      { cost: 60,  dmg: 6,  cd: 1.0, range: 2.0, slow: 0.35 },
-      { cost: 70,  dmg: 11, cd: 1.0, range: 2.2, slow: 0.45 },
-      { cost: 120, dmg: 18, cd: 0.9, range: 2.4, slow: 0.55, note: '减速 55%' },
+      { hp: 160, armor: 0.2, cost: 60,  dmg: 6,  cd: 1.0, range: 2.0, slow: 0.35 },
+      { hp: 220, armor: 0.25, cost: 70,  dmg: 11, cd: 1.0, range: 2.2, slow: 0.45 },
+      { hp: 300, armor: 0.3, cost: 120, dmg: 18, cd: 0.9, range: 2.4, slow: 0.55, note: '减速 55%' },
     ],
   },
   catapult: {
     name: '水晶投石机', key: '4', icon: '💎', dmgType: 'phys', air: false,
     desc: '远程抛射魔晶，落地爆炸造成范围物理伤害。不能攻击飞行单位，脚下有盲区。',
     levels: [
-      { cost: 110, dmg: 40,  cd: 2.4, range: 4.2, splash: 1.1, minRange: 1.2 },
-      { cost: 120, dmg: 70,  cd: 2.2, range: 4.4, splash: 1.2, minRange: 1.2 },
-      { cost: 180, dmg: 110, cd: 2.0, range: 4.6, splash: 1.5, minRange: 1.2, note: '爆炸范围更大' },
+      { hp: 140, armor: 0.2, cost: 110, dmg: 40,  cd: 2.4, range: 4.2, splash: 1.1, minRange: 1.2 },
+      { hp: 190, armor: 0.25, cost: 120, dmg: 70,  cd: 2.2, range: 4.4, splash: 1.2, minRange: 1.2 },
+      { hp: 250, armor: 0.3, cost: 180, dmg: 110, cd: 2.0, range: 4.6, splash: 1.5, minRange: 1.2, note: '爆炸范围更大' },
+    ],
+  },
+  chime: {
+    name: '霜铃塔', key: '5', icon: '🔔', dmgType: 'magic', air: true, pulse: true, frost: true,
+    desc: '水晶拱门下悬着一口冰铃，每次摇响都放出一圈寒霜涟漪：范围内所有敌人（包括飞行单位）大幅减速，并受到少量魔法伤害。',
+    levels: [
+      { hp: 120, armor: 0.1,  cost: 70,  dmg: 4,  cd: 1.3, range: 2.3, slow: 0.4,  slowT: 2.0 },
+      { hp: 170, armor: 0.15, cost: 80,  dmg: 8,  cd: 1.2, range: 2.6, slow: 0.5,  slowT: 2.2 },
+      { hp: 230, armor: 0.2,  cost: 130, dmg: 14, cd: 1.1, range: 2.9, slow: 0.6,  slowT: 2.5, brittle: 0.2, note: '寒蚀：被冻伤的敌人护甲 -20%' },
+    ],
+  },
+  frost: {
+    name: '凛冬尖碑', key: '6', icon: '🧊', dmgType: 'magic', air: false,
+    desc: '投出冰枪，把命中的敌人冻成冰块，一段时间内无法移动。Boss 只会被冻住很短的时间；刚解冻的敌人短时间内不会再被冻住。',
+    levels: [
+      { hp: 130, armor: 0.15, cost: 100, dmg: 18, cd: 2.6, range: 3.0, freeze: 1.1 },
+      { hp: 180, armor: 0.2,  cost: 110, dmg: 32, cd: 2.4, range: 3.2, freeze: 1.5 },
+      { hp: 240, armor: 0.25, cost: 170, dmg: 50, cd: 2.2, range: 3.4, freeze: 1.9, freezeAoe: 1.0, note: '冰爆：同时冻住周围 1 格内的敌人' },
     ],
   },
 };
@@ -78,10 +105,25 @@ G.ENEMIES = {
               desc: '护甲 40%：物理伤害降低 40%。用方尖碑、荆棘或露娜的魔法伤害对付。' },
   skeleton: { name: '骷髅盾卫',   icon: '💀', hp: 70,   speed: 1.1,  gold: 7,   armor: 0,    leak: 2, scale: 1, shield: 90,
               desc: '护盾：先吸收伤害，魔法伤害对护盾 ×2。' },
-  bat:      { name: '暗影蝙蝠',   icon: '🦇', hp: 35,   speed: 1.7,  gold: 4,   armor: 0,    leak: 1, scale: 1, fly: true,
+  bat:      { name: '暗影蝙蝠',   icon: '🦇', hp: 35,   speed: 1.7,  gold: 4,   armor: 0,    leak: 1, scale: 1, fly: true, countMul: 0.5,
               desc: '飞行：无视地形直线飞向古树。只有弓手塔、方尖碑和露娜能攻击。' },
   ogre:     { name: '食人魔督军', icon: '👿', hp: 3200, speed: 0.6,  gold: 80,  armor: 0.3,  leak: 6, scale: 1.3, boss: true,
               desc: 'Boss：血量很高，护甲 30%。' },
+  slinger:  { name: '投石地精',   icon: '🪨', hp: 60,   speed: 1.2,  gold: 5,   armor: 0,    leak: 1, scale: 1,
+              sling: { range: 2.3, every: 3.0, dmg: 7 }, countMul: 0.5,
+              desc: '边走边向附近的塔投掷石块，会损坏防御塔。优先消灭它们，或者把塔建在离路远一点的地方。' },
+  shaman:   { name: '迷雾萨满',   icon: '🌫️', hp: 110,  speed: 1.0,  gold: 7,   armor: 0.1,  leak: 2, scale: 1,
+              fogAura: { range: 2.2, rate: 0.6 }, countMul: 0.5,
+              desc: '身边笼罩着紫色迷雾：附近的塔攻击速度 -40%。' },
+  wisp:     { name: '噤声精怪',   icon: '👁️', hp: 70,   speed: 1.45, gold: 7,   armor: 0,    leak: 1, scale: 1, fly: true,
+              silence: { range: 2.8, every: 4.5, dur: 2.6 }, countMul: 0.5,
+              desc: '飞行。每隔几秒用暗影锁链封住附近的一座塔，使它暂时无法攻击。只有能对空的塔与露娜能打到它。' },
+  golem:    { name: '熔岩巨像',   icon: '🌋', hp: 4600, speed: 0.45, gold: 90,  armor: 0.35, leak: 8, scale: 1.45, boss: true,
+              slam: { range: 2.2, every: 7, dmg: 32, stun: 1.5 },
+              desc: 'Boss：岩石与熔岩构成的巨人，护甲 35%。每隔几秒重踏地面，砸伤并震晕附近的塔。' },
+  lich:     { name: '亡灵巫王',   icon: '☠️', hp: 5200, speed: 0.55, gold: 110, armor: 0.2,  leak: 10, scale: 1.4, boss: true, shield: 900,
+              summon: { type: 'skeleton', every: 5, count: 3 },
+              desc: 'Boss：被魔法护盾包裹的巫王，不断从地下召唤骷髅盾卫。先用魔法伤害击破护盾。' },
   troll:    { name: '腐化巨魔王', icon: '👑', hp: 19000, speed: 0.5, gold: 200, armor: 0.3,  leak: 99, scale: 1.7, boss: true,
               regen: 20, summon: { type: 'goblin', every: 6, count: 3 },
               desc: '最终 Boss：每秒回复生命，并不断召唤哥布林。放过它就失败。' },
@@ -90,20 +132,20 @@ G.ENEMIES = {
 // 每组：[类型, 数量, 间隔秒, 开始延迟秒]
 G.WAVES = [
   [['goblin', 14, 0.75, 0]],
-  [['goblin', 18, 0.6, 0], ['wolf', 6, 0.6, 8]],
-  [['wolf', 14, 0.5, 0], ['goblin', 14, 0.6, 4]],
-  [['goblin', 16, 0.55, 0], ['orc', 6, 1.8, 3]],
-  [['goblin', 14, 0.6, 0], ['bat', 14, 0.7, 4], ['wolf', 8, 0.5, 10]],
-  [['skeleton', 10, 1.2, 0], ['wolf', 16, 0.45, 3], ['goblin', 12, 0.5, 8]],
-  [['goblin', 26, 0.4, 0], ['orc', 9, 1.4, 4], ['skeleton', 6, 1.4, 10]],
-  [['bat', 22, 0.45, 0], ['skeleton', 12, 1.0, 2], ['wolf', 12, 0.4, 9]],
-  [['wolf', 32, 0.3, 0], ['orc', 10, 1.2, 5], ['bat', 10, 0.6, 10]],
-  [['goblin', 30, 0.4, 0], ['orc', 6, 1.5, 4], ['ogre', 1, 1, 8], ['wolf', 14, 0.4, 14]],
-  [['skeleton', 18, 0.8, 0], ['bat', 22, 0.45, 3], ['goblin', 20, 0.35, 10]],
-  [['orc', 16, 0.9, 0], ['wolf', 28, 0.3, 4], ['skeleton', 8, 1.0, 10]],
-  [['skeleton', 16, 0.7, 0], ['orc', 14, 0.9, 2], ['bat', 24, 0.4, 6], ['wolf', 16, 0.35, 12]],
-  [['wolf', 34, 0.28, 0], ['orc', 18, 0.8, 3], ['skeleton', 16, 0.7, 6], ['bat', 24, 0.4, 8], ['ogre', 1, 1, 14]],
-  [['goblin', 30, 0.4, 0], ['orc', 14, 1.0, 4], ['troll', 1, 1, 8], ['bat', 18, 0.5, 12], ['skeleton', 12, 0.8, 16]],
+  [['goblin', 16, 0.6, 0], ['wolf', 6, 0.6, 8]],
+  [['wolf', 12, 0.5, 0], ['goblin', 12, 0.6, 4], ['slinger', 4, 1.2, 8]],
+  [['goblin', 14, 0.55, 0], ['orc', 5, 1.8, 3], ['shaman', 2, 3, 6]],
+  [['goblin', 12, 0.6, 0], ['bat', 12, 0.7, 4], ['wolf', 8, 0.5, 10], ['slinger', 5, 1.2, 6]],
+  [['skeleton', 9, 1.2, 0], ['wolf', 14, 0.45, 3], ['wisp', 3, 2.5, 6], ['goblin', 10, 0.5, 8]],
+  [['goblin', 20, 0.4, 0], ['orc', 8, 1.4, 4], ['slinger', 6, 1.0, 6], ['golem', 1, 1, 9]],
+  [['bat', 18, 0.45, 0], ['skeleton', 10, 1.0, 2], ['wisp', 5, 2, 5], ['shaman', 3, 2.5, 8]],
+  [['wolf', 28, 0.3, 0], ['orc', 9, 1.2, 5], ['bat', 9, 0.6, 10], ['slinger', 8, 0.9, 7]],
+  [['goblin', 26, 0.4, 0], ['orc', 6, 1.5, 4], ['ogre', 1, 1, 8], ['wolf', 12, 0.4, 14], ['shaman', 4, 2, 6]],
+  [['skeleton', 16, 0.8, 0], ['bat', 20, 0.45, 3], ['wisp', 6, 1.6, 6], ['goblin', 16, 0.35, 10]],
+  [['orc', 14, 0.9, 0], ['wolf', 24, 0.3, 4], ['lich', 1, 1, 8], ['shaman', 5, 1.8, 6]],
+  [['skeleton', 14, 0.7, 0], ['orc', 12, 0.9, 2], ['bat', 20, 0.4, 6], ['wolf', 14, 0.35, 12], ['slinger', 10, 0.8, 4], ['wisp', 6, 1.5, 9]],
+  [['wolf', 30, 0.28, 0], ['orc', 16, 0.8, 3], ['skeleton', 14, 0.7, 6], ['golem', 1, 1, 8], ['ogre', 1, 1, 16], ['shaman', 6, 1.6, 5]],
+  [['goblin', 26, 0.4, 0], ['orc', 12, 1.0, 4], ['troll', 1, 1, 8], ['lich', 1, 1, 20], ['bat', 16, 0.5, 12], ['wisp', 8, 1.4, 10]],
 ];
 
 // 天象：作用于整波的全场效果。备战阶段就会公布，方便提前应对。

@@ -8,19 +8,19 @@
 
   G.newState = function () {
     for (const e of S.enemies || []) e.remove();
-    for (const t of S.towers || []) G.scene.remove(t.m.group);
+    for (const t of S.towers || []) t.remove();
     for (const p of S.projectiles || []) p.remove(true);
     if (G.OmenFX) G.OmenFX.clear();
     Object.assign(S, {
       phase: 'prep', wave: 0, gold: CFG.START_GOLD, ley: CFG.START_LEY, lives: CFG.START_LIVES,
       speed: 1, paused: false, time: 0,
       enemies: [], towers: [], projectiles: [], queue: [], waveTime: 0, undo: [], selected: null,
-      stats: { kills: 0, leaks: 0, built: 0 }, taken: new Set(), portalCounter: 0,
+      stats: { kills: 0, leaks: 0, built: 0, lost: 0 }, nukeUses: 0, nukeCd: 0, taken: new Set(), portalCounter: 0,
       hand: [], expandTokens: 0, offers: null, rng: Math.random,
       omens: [], om: Object.assign({}, G.OMEN_DEFAULT), purged: false, seenOmen: false, lastOmens: [], boltT: 0,
       mods: {
-        dmg: { archer: 1, obelisk: 1, thorn: 1, catapult: 1 },
-        range: { archer: 1, obelisk: 1, thorn: 1, catapult: 1 },
+        dmg: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1 },
+        range: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1 },
         rate: 1, heightMul: 1, cost: 1, sell: CFG.SELL_RATE, killGold: 1, leyBonus: 0, splash: 1, heroDmg: 1, heroCd: 1,
       },
     });
@@ -40,7 +40,7 @@
         FX.text(e.aimPoint(), '护盾破碎', 'shieldtxt');
       } else { e.shield -= eff; a = 0; }
     }
-    if (type === 'phys') a *= 1 - e.armor;
+    if (type === 'phys') a *= 1 - Math.max(0, e.armor - (e.brittleT > 0 ? e.brittle : 0));
     e.hp -= a;
     e.flash = 0.08;
     e.dmgAcc += amt;
@@ -53,7 +53,7 @@
       const d = this.def = G.ENEMIES[type];
       this.type = type;
       const om = S.om;
-      const hm = d.boss ? 1 : G.hpMul(S.wave) * om.hp;
+      const hm = d.boss ? 1 : G.hpMul(S.wave) * om.hp * CFG.ENEMY_HP;
       this.maxHp = this.hp = Math.round(d.hp * hm);
       this.maxShield = this.shield = Math.round((d.shield || 0) * hm * om.shieldMul) + (d.boss ? 0 : Math.round(this.maxHp * om.shieldPct));
       this.armor = om.noArmor ? 0 : Math.min(0.75, Math.max(d.armor, d.armor + om.armor));
@@ -69,6 +69,11 @@
       this.off = d.boss ? { x: 0, z: 0 } : { x: (Math.random() - 0.5) * 0.36, z: (Math.random() - 0.5) * 0.36 };
       this.slowT = 0; this.slowAmt = 0; this.stunT = 0; this.flash = 0; this.anim = Math.random() * 10;
       this.summonT = d.summon ? d.summon.every : 0;
+      // 特殊能力的计时器（错开一点，避免同一批敌人同时出手）
+      this.slingT = d.sling ? d.sling.every * (0.4 + Math.random() * 0.6) : 0;
+      this.silT = d.silence ? d.silence.every * (0.3 + Math.random() * 0.7) : 0;
+      this.slamT = d.slam ? d.slam.every * 0.6 : 0;
+      this.frozenT = 0; this.thawT = 0; this.chillT = 0; this.brittleT = 0; this.brittle = 0;
       this.dmgAcc = 0; this.dmgT = 0;
       this.baseEm = G.OmenFX.enemyTint();   // 天象给敌人身体染上的颜色
       for (const m of this.m.mats) m.emissive.copy(this.baseEm);
@@ -104,8 +109,20 @@
       this.anim += dt;
       if (this.flash > 0) {
         this.flash -= dt;
-        for (const m of this.m.mats) { if (this.flash > 0) m.emissive.setHex(0x888888); else m.emissive.copy(this.baseEm); }
+        for (const m of this.m.mats) { if (this.flash > 0) m.emissive.setHex(0x888888); else m.emissive.copy(this.tint()); }
       }
+      // 冻伤 / 冰冻：身体泛出冰蓝色
+      const chilled = this.chillT > 0 || this.frozenT > 0;
+      if (chilled !== this.wasChilled && this.flash <= 0) { for (const m of this.m.mats) m.emissive.copy(this.tint(chilled)); }
+      this.wasChilled = chilled;
+      if (this.chillT > 0) this.chillT -= dt;
+      if (this.brittleT > 0) this.brittleT -= dt;
+      if (this.thawT > 0) this.thawT -= dt;
+      if (this.frozenT > 0) {
+        this.frozenT -= dt;
+        if (this.frozenT <= 0) this.thaw();
+      }
+      this.abilities(dt);
       if (this.regen) this.hp = Math.min(this.maxHp, this.hp + this.regen * dt);
       if (this.def.summon) {
         this.summonT -= dt;
@@ -115,8 +132,10 @@
             const e = new Enemy(this.def.summon.type, this.tile, this.pos);
             S.enemies.push(e);
           }
-          FX.ring(this.pos, 0xb04dff, 0.2, 1.6, 0.6);
-          FX.emit(this.aimPoint(), 20, 0xb04dff, 2, 0.6);
+          const sc = this.type === 'lich' ? 0x5aff9a : 0xb04dff;
+          FX.ring(this.pos, sc, 0.2, 1.6, 0.6);
+          FX.emit(this.aimPoint(), 20, sc, 2, 0.6);
+          if (this.type === 'lich') { A.play('portal', 0.5); FX.softRing(this.pos, 0x3aff8a, 0.3, 1.4, 0.9, 0.08, 0.5, 'disc', 1.2); }
         }
       }
       if (this.stunT > 0) { this.stunT -= dt; this.vel.set(0, 0, 0); this.place(dt); return; }
@@ -148,9 +167,94 @@
       if (dt > 0) this.vel.set((this.pos.x - ox) / dt, 0, (this.pos.z - oz) / dt);
       this.place(dt);
     }
+    // 当前应有的自发光色：冻伤时偏冰蓝，否则是天象染色
+    tint(chilled = this.chillT > 0 || this.frozenT > 0) { return chilled ? CHILL : this.baseEm; }
+    // 冰冻：罩上冰块、停止移动。刚解冻的敌人短时间内免疫，Boss 只冻很短
+    freeze(dur) {
+      if (this.dead || this.thawT > 0 || this.frozenT > 0) return false;
+      if (this.def.boss) dur *= 0.3;
+      this.frozenT = dur; this.stunT = Math.max(this.stunT, dur);
+      if (!this.ice) { this.ice = M.iceBlock(); this.m.group.add(this.ice); }
+      this.ice.visible = true;
+      this.ice.position.y = this.fly ? -0.25 : 0;
+      for (const m of this.m.mats) m.emissive.copy(CHILL);
+      FX.emit(this.aimPoint(), 12, 0xcff4ff, 1.4, 0.5, 0.6, 2);
+      return true;
+    }
+    thaw() {
+      this.frozenT = 0; this.thawT = 1.6;
+      if (this.ice) this.ice.visible = false;
+      FX.emit(this.aimPoint(), 10, 0xdff6ff, 1.8, 0.4, 0.8, 5);   // 碎冰
+      A.play('crack', 0.08);
+    }
+    // 特殊能力：投石、迷雾光环、噤声、重踏
+    abilities(dt) {
+      const d = this.def;
+      if (this.frozenT > 0 || this.stunT > 0) return;
+      if (d.sling) {
+        this.slingT -= dt;
+        if (this.m.arm) this.m.arm.rotation.x = this.slingT < 0.35 ? -2.4 + this.slingT * 4 : Math.sin(this.anim * 12) * 0.25;
+        if (this.slingT <= 0) {
+          const tw = nearestTower(this.pos, d.sling.range);
+          if (tw) {
+            this.slingT = d.sling.every;
+            S.projectiles.push(new Shot(this.aimPoint(), tw, d.sling.dmg * (1 + 0.05 * S.wave)));
+            A.play('sling', 0.12);
+          } else this.slingT = 0.4;
+        }
+      }
+      if (d.fogAura) {
+        for (const t of S.towers) if (hyp(t.pos.x, t.pos.z, this.pos.x, this.pos.z) <= d.fogAura.range) t.fogT = 0.3;
+        if (this.m.fog) { this.m.fog.scale.setScalar(d.fogAura.range / this.scale); this.m.fog.material.opacity = 0.09 + Math.sin(this.anim * 2) * 0.03; }
+        if (Math.random() < dt * 10) {
+          const a = Math.random() * Math.PI * 2, r = Math.random() * d.fogAura.range;
+          FX.emit(V().set(this.pos.x + Math.cos(a) * r, 0.2, this.pos.z + Math.sin(a) * r), 1, 0x9a5cff, 0.15, 1.2, 0.3, -0.1, 0.2, 0.9);
+        }
+      }
+      if (d.silence) {
+        this.silT -= dt;
+        if (this.silT <= 0) {
+          let best = null, bd = d.silence.range;
+          for (const t of S.towers) {
+            if (t.silenceT > 0) continue;
+            const dd = hyp(t.pos.x, t.pos.z, this.pos.x, this.pos.z);
+            if (dd < bd) { bd = dd; best = t; }
+          }
+          if (best) {
+            this.silT = d.silence.every;
+            best.silence(d.silence.dur);
+            const top = V().set(best.pos.x, Wd.top(best.tile) + 0.6, best.pos.z);
+            FX.beam(this.aimPoint(), top, 0x8a3dff, 0.5);
+            FX.beam(this.aimPoint(), top, 0x2a0a4a, 0.5);
+            A.play('silence', 0.2);
+          } else this.silT = 0.5;
+        }
+      }
+      if (d.slam) {
+        this.slamT -= dt;
+        if (this.slamT <= 0) {
+          const near = S.towers.filter(t => hyp(t.pos.x, t.pos.z, this.pos.x, this.pos.z) <= d.slam.range);
+          if (near.length) {
+            this.slamT = d.slam.every;
+            this.stunT = 0.6;   // 重踏时自己也停一下
+            A.play('boom'); G.shake(0.4);
+            FX.softRing(this.pos, 0xff6a1a, 0.4, d.slam.range * 1.1, 0.7, 0.08, 0.8, 'ring', 1.6);
+            FX.softRing(this.pos, 0xffa040, 0.2, d.slam.range * 0.7, 0.5, 0.09, 0.35, 'disc', 1.3);
+            FX.emit(V().set(this.pos.x, 0.2, this.pos.z), 40, 0xff8a30, 3.5, 0.7, 1.2, 6, 0.5);
+            FX.emit(V().set(this.pos.x, 0.2, this.pos.z), 20, 0x5a4a48, 2.5, 0.9, 1.4, 6, 0.6, 0.8);
+            for (const t of near) {
+              t.hurt(d.slam.dmg * (1 + 0.04 * S.wave), 'phys');
+              t.stun(d.slam.stun);
+            }
+          } else this.slamT = 0.5;
+        }
+      }
+    }
     place(dt) {
       const g = this.m.group;
       g.position.copy(this.pos);
+      if (this.m.hover) this.m.body.position.y = 0.12 + Math.sin(this.anim * 2.2) * 0.05;
+      if (this.m.tent) this.m.tent.rotation.y += dt * 2;
       if (this.vel.lengthSq() > 0.0001) {
         const want = Math.atan2(this.vel.x, this.vel.z);
         let diff = want - g.rotation.y;
@@ -182,7 +286,7 @@
     }
     kill() {
       if (this.dead) return;
-      const gold = Math.round(this.def.gold * G.goldMul(S.wave) * S.mods.killGold * S.om.gold);
+      const gold = Math.max(1, Math.round(this.def.gold * (this.def.boss ? 1 : CFG.ENEMY_GOLD) * G.goldMul(S.wave) * S.mods.killGold * S.om.gold));
       S.gold += gold;
       S.stats.kills++;
       A.play('die');
@@ -203,6 +307,40 @@
     }
   }
   G.Enemy = Enemy;
+  const CHILL = new THREE.Color(0x14385f).convertSRGBToLinear();
+  function nearestTower(p, range) {
+    let best = null, bd = range;
+    for (const t of S.towers) { const d = hyp(t.pos.x, t.pos.z, p.x, p.z); if (d < bd) { bd = d; best = t; } }
+    return best;
+  }
+
+  // 敌人扔向塔的石块：抛物线飞行，落地时砸伤目标塔
+  class Shot {
+    constructor(from, tower, dmg) {
+      this.tower = tower; this.dmg = dmg; this.t = 0;
+      this.start = from.clone();
+      this.to = V().set(tower.pos.x, Wd.top(tower.tile) + 0.35, tower.pos.z);
+      this.T = 0.45 + this.start.distanceTo(this.to) * 0.08;
+      this.m = M.stone(); this.m.position.copy(from);
+      G.scene.add(this.m);
+    }
+    update(dt) {
+      this.t += dt;
+      const k = Math.min(1, this.t / this.T);
+      this.m.position.lerpVectors(this.start, this.to, k);
+      this.m.position.y += Math.sin(k * Math.PI) * 0.9;
+      this.m.rotation.x += dt * 12; this.m.rotation.z += dt * 9;
+      if (k < 1) return true;
+      this.remove();
+      if (this.tower.hp > 0 && S.towers.includes(this.tower)) {
+        this.tower.hurt(this.dmg, 'phys');
+        FX.emit(this.to, 8, 0xb09a7a, 1.6, 0.4, 0.8, 5, 0.1, 1.0);
+        A.play('hit', 0.06);
+      }
+      return false;
+    }
+    remove() { G.scene.remove(this.m); }
+  }
 
   // ======================= 塔 =======================
   G.towerStats = function (type, level, h, buff) {
@@ -213,6 +351,8 @@
       range: L.range * rM * S.mods.range[type] * om.range,
       cd: L.cd / (S.mods.rate * om.rate * (buff ? 1 + G.HERO.skills.e.haste : 1)),
       splash: (L.splash || 0) * S.mods.splash, minRange: L.minRange || 0, slow: L.slow || 0,
+      slowT: L.slowT || 1.2, freeze: L.freeze || 0, freezeAoe: L.freezeAoe || 0, brittle: L.brittle || 0,
+      hp: L.hp, armor: L.armor || 0,
       multi: L.multi || 1, chain: L.chain || 0, rM, dM,
     };
   };
@@ -225,6 +365,14 @@
       this.cd = 0.3; this.buff = 0; this.mode = 'first'; this.anim = 0; this.kick = 0;
       this.invested = G.towerCost(type, 0);
       this.pos = V().set(tile.wx, 0, tile.wz);
+      // 生命与护甲（随等级提升）；迷雾 / 噤声 / 震晕三种干扰状态
+      this.maxHp = this.hp = this.def.levels[0].hp;
+      this.fogT = 0; this.silenceT = 0; this.stunT = 0; this.hurtT = 0;
+      const hb = this.hb = document.createElement('div');
+      hb.className = 'hb tower';
+      hb.innerHTML = '<i class="hp"></i>';
+      FX.dom.appendChild(hb);
+      this.hpEl = hb.children[0];
       this.rebuild();
       this.m.group.scale.setScalar(0.01);
       this.pop = 0;
@@ -239,7 +387,60 @@
       G.scene.add(this.m.group);
       this.m.group.traverse(o => { o.userData.tower = this; });
     }
-    stats() { return G.towerStats(this.type, this.level, this.tile.h, this.buff > 0); }
+    stats() {
+      const st = G.towerStats(this.type, this.level, this.tile.h, this.buff > 0);
+      if (this.fogT > 0) st.cd /= G.ENEMIES.shaman.fogAura.rate;   // 迷雾：攻速 -40%
+      return st;
+    }
+    get armor() { return this.def.levels[this.level].armor || 0; }
+    // 受到敌人伤害（物理伤害按护甲减免）
+    hurt(amt, type) {
+      if (this.hp <= 0) return;
+      const a = type === 'phys' ? amt * (1 - this.armor) : amt;
+      this.hp -= a; this.hurtT = 0.15;
+      FX.text(V().set(this.pos.x, Wd.top(this.tile) + 1.0, this.pos.z), '-' + Math.round(a), 'towerdmg', 0.6);
+      if (this.hp <= 0) this.destroy();
+    }
+    silence(dur) {
+      this.silenceT = Math.max(this.silenceT, dur);
+      if (!this.chains) {   // 暗影锁链：绕着塔旋转的两道紫黑色环
+        this.chains = new THREE.Group();
+        for (const [r, tilt, c] of [[0.36, 0.5, 0x6a2dbf], [0.3, -0.6, 0x2a0a4a]]) {
+          const m = new THREE.Mesh(new THREE.TorusGeometry(r, 0.025, 4, 18), M.glow(c, 0.9, false, 1.4));
+          m.rotation.set(Math.PI / 2 + tilt, 0, 0); this.chains.add(m);
+        }
+        G.scene.add(this.chains);
+      }
+      this.chains.visible = true;
+      FX.text(V().set(this.pos.x, Wd.top(this.tile) + 1.25, this.pos.z), '噤声', 'silencetxt', 1.0);
+    }
+    stun(dur) {
+      this.stunT = Math.max(this.stunT, dur);
+      FX.text(V().set(this.pos.x, Wd.top(this.tile) + 1.25, this.pos.z), '震晕', 'stuntxt', 0.9);
+    }
+    destroy() {
+      this.hp = 0;
+      S.stats.lost++;
+      const top = Wd.top(this.tile);
+      A.play('collapse');
+      G.shake(0.3);
+      FX.emit(V().set(this.pos.x, top + 0.4, this.pos.z), 40, 0x9a8a78, 3, 0.9, 1.4, 6, 0.4, 0.9);
+      FX.emit(V().set(this.pos.x, top + 0.5, this.pos.z), 20, 0xffb060, 2.4, 0.5);
+      FX.softRing(V().set(this.pos.x, 0, this.pos.z), 0xff7050, 0.2, 1.2, 0.6, top + 0.06, 0.6);
+      G.UI.toast(`${this.def.name}被摧毁了！`, 'warn');
+      this.remove();
+      S.towers.splice(S.towers.indexOf(this), 1);
+      if (S.selected === this) S.selected = null;
+      S.undo = S.undo.filter(u => u.tower !== this);
+      G.Terrain.updateDecor();
+      G.UI.refresh();
+    }
+    heal(frac) {
+      if (this.hp >= this.maxHp) return 0;
+      const before = this.hp;
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * frac);
+      return this.hp - before;
+    }
     muzzle() { const p = V(); this.m.muzzle.getWorldPosition(p); return p; }
     targets(st, n) {
       const list = [];
@@ -276,9 +477,40 @@
       }
       if (this.m.arm) this.m.arm.rotation.x += ((this.kick > 0 ? -1.2 : 0.5) - this.m.arm.rotation.x) * Math.min(1, dt * (this.kick > 0 ? 25 : 3));
 
+      // 干扰状态的表现
+      if (this.fogT > 0) { this.fogT -= dt; if (Math.random() < dt * 6) FX.emit(V().set(this.pos.x, ty + 0.5, this.pos.z), 1, 0x9a5cff, 0.3, 0.8, 0.4, -0.2, 0.4, 1.0); }
+      if (this.chains) {
+        this.chains.visible = this.silenceT > 0;
+        this.chains.position.set(this.pos.x, ty + 0.55 + Math.sin(this.anim * 3) * 0.05, this.pos.z);
+        this.chains.rotation.y += dt * 2.5;
+      }
+      if (this.m.bell) this.m.bell.rotation.z = Math.sin(this.anim * 2.2) * 0.08 + Math.max(0, this.kick) * Math.sin(this.anim * 30) * 1.4;
+      if (this.silenceT > 0) { this.silenceT -= dt; if (Math.random() < dt * 8) FX.emit(V().set(this.pos.x, ty + 0.6, this.pos.z), 1, 0x6a2dbf, 0.4, 0.6, 0.3, 0, 0.3, 1.2); return; }
+      if (this.stunT > 0) { this.stunT -= dt; if (Math.random() < dt * 10) FX.emit(V().set(this.pos.x, ty + 0.9, this.pos.z), 1, 0xfff27a, 0.5, 0.4, 0.2, 0, 0.2); return; }
+
       if (S.phase !== 'combat') return;
       this.cd -= dt;
       const st = this.stats();
+      if (this.def.frost) {   // 霜铃塔：摇响冰铃，寒霜涟漪减速范围内所有敌人（含飞行）
+        if (this.cd > 0) return;
+        const hit = this.targets(st, 99);
+        if (!hit.length) return;
+        this.cd = st.cd; this.kick = 0.35;
+        A.play('chime', 0.15);
+        const c = V().set(this.pos.x, 0, this.pos.z);
+        FX.softRing(c, 0x7fd8ff, 0.3, st.range, 0.8, 0.08, 0.55, 'ring', 1.4);
+        FX.softRing(c, 0xcff4ff, 0.2, st.range * 0.6, 0.6, 0.09, 0.2, 'disc', 1.1);
+        if (this.level === 2) FX.softRing(c, 0xffffff, st.range * 0.3, st.range * 1.05, 1.0, 0.1, 0.35, 'ring', 1.6);
+        FX.emit(this.muzzle(), 6 + this.level * 5, 0xdff6ff, 1.2, 0.7, 0.3, 0.5, 0.2, 1.6);
+        hit.forEach((e, i) => {
+          G.damage(e, st.dmg, 'magic');
+          e.slowAmt = Math.max(e.slowT > 0 ? e.slowAmt : 0, st.slow); e.slowT = Math.max(e.slowT, st.slowT);
+          e.chillT = st.slowT;
+          if (st.brittle) { e.brittle = st.brittle; e.brittleT = st.slowT; }
+          if (i < 10) FX.emit(e.aimPoint(), 3, 0xcff4ff, 0.8, 0.5, 0.4, 0.5, 0.15, 1.6);   // 雪花
+        });
+        return;
+      }
       if (this.def.pulse) {
         if (this.cd > 0) return;
         const hit = this.targets(st, 99);
@@ -321,6 +553,14 @@
         FX.emit(from, 6 + this.level * 6, sty.trail, 1.2, 0.4, 0.5, 0);
         FX.flash(from, sty.hitColor, 0.6 + this.level * 0.35, 0.18);
         if (this.level === 2) FX.ring(from, sty.hitColor, 0.1, 0.6, 0.3, from.y);
+      } else if (this.type === 'frost') {
+        // 凛冬尖碑：优先冻住还没被冻住、也不在免疫期的敌人
+        const cand = this.targets(st, 8).filter(e => e.frozenT <= 0 && e.thawT <= 0);
+        const e = cand[0] || tg[0];
+        A.play('ice', 0.1);
+        FX.flash(from, 0xbfeaff, 0.5 + this.level * 0.25, 0.15);
+        FX.emit(from, 6 + this.level * 4, 0xdff6ff, 1, 0.4, 0.5, 0);
+        S.projectiles.push(new Proj('ice', from, e, { dmg: st.dmg, freeze: st.freeze, aoe: st.freezeAoe, level: this.level }));
       } else if (this.type === 'catapult') {
         A.play('catapult');
         this.kick = 0.18;
@@ -335,6 +575,8 @@
     }
     remove() {
       G.scene.remove(this.m.group);
+      if (this.chains) G.scene.remove(this.chains);
+      this.hb.remove();
       this.tile.tower = null;
     }
   }
@@ -434,6 +676,18 @@
           G.damage(best, this.o.dmg * 0.6, 'magic');
           hitSet.add(best); from = best;
         }
+      } else if (this.kind === 'ice') {
+        G.damage(e, this.o.dmg, 'magic');
+        FX.emit(this.last, 14 + (this.o.level || 0) * 6, 0xdff6ff, 2, 0.45, 0.7, 3);
+        FX.softRing(V().set(e.pos.x, 0, e.pos.z), 0x9fe4ff, 0.1, 0.6 + (this.o.aoe || 0), 0.45, 0.08, 0.6, 'ring', 1.5);
+        A.play('freeze', 0.08);
+        if (!e.dead) e.freeze(this.o.freeze);
+        if (this.o.aoe) {   // 冰爆：周围的敌人也被冻住
+          for (const n of S.enemies) {
+            if (n === e || n.dead || n.fly) continue;
+            if (hyp(n.pos.x, n.pos.z, e.pos.x, e.pos.z) <= this.o.aoe) { n.freeze(this.o.freeze * 0.7); G.damage(n, this.o.dmg * 0.4, 'magic'); }
+          }
+        }
       } else if (this.kind === 'star') {
         G.damage(e, this.o.dmg, 'magic');
         FX.emit(this.last, 8, 0xfff27a, 1.4, 0.35);
@@ -480,6 +734,11 @@
       { speed: 0, color: 0x4fd2ff, len: 0.18, width: 0.09, halo: 0.6, trail: 0x3fc4ff, ribW: 0.05, ribN: 10, core: 0x9fe8ff, crystal: 0.08, hit: 1.6, hitColor: 0x9fe8ff },
       { speed: 0, color: 0x4fd2ff, len: 0.25, width: 0.12, halo: 0.9, trail: 0x3fc4ff, ribW: 0.09, ribN: 18, core: 0xbff4ff, crystal: 0.1, hit: 2.2, hitColor: 0x9fe8ff },
       { speed: 0, color: 0xbff8ff, len: 0.32, width: 0.16, halo: 1.3, trail: 0x8fe8ff, ribW: 0.14, ribN: 24, core: 0xe8fcff, crystal: 0.13, sparkle: 0xffffff, hit: 2.8, hitColor: 0xcffaff },
+    ],
+    ice: [
+      { speed: 9, color: 0xbfeaff, len: 0.4, width: 0.07, halo: 0.4, trail: 0x8fd8ff, ribW: 0.04, ribN: 10, hit: 0.7, hitColor: 0xcff4ff },
+      { speed: 10, color: 0xcff4ff, len: 0.55, width: 0.09, halo: 0.6, trail: 0x7fd0ff, ribW: 0.06, ribN: 14, sparkle: 0xe8fbff, hit: 0.95, hitColor: 0xdff6ff },
+      { speed: 11, color: 0xe8fbff, len: 0.7, width: 0.11, halo: 0.9, trail: 0x9fe4ff, ribW: 0.09, ribN: 18, sparkle: 0xffffff, spiral: 1, spiralColor: 0xcff4ff, hit: 1.3, hitColor: 0xe8fbff, hitRing: 0.6 },
     ],
     star: [{ speed: 11, color: 0xffc94a, len: 0.38, width: 0.07, halo: 0.55, trail: 0xffb830, ribW: 0.06, ribN: 13, hit: 0.8, hitColor: 0xffd76a }],
   };
@@ -665,8 +924,10 @@
     const q = [];
     for (const [type, count0, interval0, delay] of groups) {
       const boss = G.ENEMIES[type].boss;
-      const count = boss ? count0 : Math.round(count0 * S.om.count);
-      const interval = interval0 * count0 / Math.max(1, count);   // 数量变多时出怪更密，整组时长不变
+      const base = boss ? count0 : count0 * CFG.COUNT_MUL * (G.ENEMIES[type].countMul || 1);
+      const count = boss ? count0 : Math.round(base * S.om.count);
+      // 兵量 ×3 时间隔按 INTERVAL_MUL 收紧（整组时长约为原来的 1.35 倍）；天象再加的数量只让出怪更密
+      const interval = interval0 * (boss ? 1 : CFG.INTERVAL_MUL) * base / Math.max(1, count);
       for (let i = 0; i < count; i++) {
         let portal;
         if (G.ENEMIES[type].boss) portal = active[0];
@@ -711,6 +972,8 @@
     const bonus = 20 + 4 * S.wave + crystals * 15;
     const ley = CFG.LEY_PER_WAVE + S.mods.leyBonus + crystals * 2;
     S.gold += bonus; S.ley += ley;
+    // 塔在波次间隙自动修复一部分
+    for (const t of S.towers) if (t.heal(CFG.TOWER_HEAL) > 0) FX.emit(V().set(t.pos.x, Wd.top(t.tile) + 0.5, t.pos.z), 8, 0x8dffa8, 1, 0.6, 0.8, -0.3, 0.3);
     const drawn = G.drawPieces(CFG.DRAW_PER_WAVE);
     if (S.wave % CFG.EXPAND_EVERY === 0 && S.wave < G.WAVES.length) { S.expandTokens++; S.offers = null; }
     A.play('clear');
@@ -747,7 +1010,7 @@
 
   // ======================= 天象（整波的全场效果） =======================
   G.omen = id => G.OMENS.find(o => o.id === id);
-  G.groupCount = g => G.ENEMIES[g[0]].boss ? g[1] : Math.round(g[1] * S.om.count);
+  G.groupCount = g => G.ENEMIES[g[0]].boss ? g[1] : Math.round(g[1] * CFG.COUNT_MUL * (G.ENEMIES[g[0]].countMul || 1) * S.om.count);
   G.applyOmens = function () {
     const om = S.om = Object.assign({}, G.OMEN_DEFAULT);
     for (const id of S.omens) {
@@ -865,12 +1128,29 @@
     const c = G.towerCost(tw.type, tw.level + 1);
     if (S.gold < c) return fail('金叶不足');
     S.gold -= c; tw.invested += c; tw.level++;
+    const add = tw.def.levels[tw.level].hp - tw.maxHp;
+    tw.maxHp += add; tw.hp += add;
     tw.rebuild();
     tw.pop = 0.3;
     S.undo = S.undo.filter(u => u.tower !== tw);
     A.play('levelup');
     FX.emit(V().set(tw.pos.x, Wd.top(tw.tile) + 0.6, tw.pos.z), 30, 0xffe27a, 2, 0.8);
     FX.ring(V().set(tw.pos.x, 0, tw.pos.z), 0xffe27a, 0.2, 1, 0.5, Wd.top(tw.tile) + 0.05);
+    G.UI.refresh();
+    return true;
+  };
+  // 修理：花费 = 缺失生命比例 × 已投入金叶 × REPAIR_RATE
+  G.repairCost = tw => Math.ceil((1 - tw.hp / tw.maxHp) * tw.invested * CFG.REPAIR_RATE);
+  act.repair = function (tw) {
+    if (tw.hp >= tw.maxHp) return fail('这座塔完好无损');
+    const c = G.repairCost(tw);
+    if (S.gold < c) return fail('金叶不足');
+    S.gold -= c;
+    tw.hp = tw.maxHp;
+    const top = Wd.top(tw.tile);
+    FX.emit(V().set(tw.pos.x, top + 0.5, tw.pos.z), 24, 0x8dffa8, 1.6, 0.7, 0.8, -0.2, 0.4);
+    FX.softRing(V().set(tw.pos.x, 0, tw.pos.z), 0x8dffa8, 0.2, 0.8, 0.6, top + 0.06, 0.6);
+    A.play('build');
     G.UI.refresh();
     return true;
   };
@@ -1011,6 +1291,70 @@
     return true;
   };
 
+  // ---------- 星核坠击：用金叶召唤的毁灭性星核 ----------
+  const NK = G.NUKE;
+  G.nukeCost = () => NK.cost + NK.costUp * S.nukeUses;
+  G.nukeReady = () => S.nukeCd <= 0 && S.gold >= G.nukeCost();
+  act.nuke = function (p) {
+    if (!['prep', 'combat'].includes(S.phase)) return false;
+    if (S.nukeCd > 0) return fail(`${NK.name}还在冷却（${Math.ceil(S.nukeCd)} 秒）`);
+    const cost = G.nukeCost();
+    if (S.gold < cost) return fail('金叶不足');
+    S.gold -= cost; S.nukeUses++; S.nukeCd = NK.cd;
+    const R = NK.radius, wave = Math.max(1, S.wave);
+    A.play('nukeCall');
+    // 预警：地面上逐渐收紧的红金色光圈
+    FX.softRing(p, 0xff5030, R * 1.25, R, NK.delay, 0.08, 0.7, 'ring', 1.4);
+    FX.softRing(p, 0xffb040, R * 0.3, R, NK.delay, 0.07, 0.18, 'disc', 1.0);
+    // 星核从高空坠落
+    const core = M.meteor(0.75, Math.random() * 10);
+    const to = V().set(p.x, 0.3, p.z), from = V().set(p.x + 7, 16, p.z - 4);
+    core.position.copy(from);
+    G.scene.add(core);
+    const rib = new FX.Ribbon(0xffa040, 1.4, 34);
+    let t = 0;
+    FX.add(dt => {
+      if (dt <= 0) return true;
+      t += dt;
+      const k = Math.min(1, t / NK.delay);
+      core.position.lerpVectors(from, to, Math.pow(k, 1.6));
+      core.rotation.x += dt * 3; core.rotation.y += dt * 2;
+      rib.push(core.position);
+      FX.emit(core.position, 3, Math.random() < 0.5 ? 0xffc060 : 0xff6a20, 0.6, 0.6, 0.2, -0.4, 0.6, 2);
+      if (k < 1) return true;
+      G.scene.remove(core); rib.fade();
+      G.nukeImpact(to, R, NK.dmg(wave));
+      return false;
+    });
+    G.UI.refresh();
+    return true;
+  };
+  G.nukeImpact = function (p, R, dmg) {
+    A.play('nuke');
+    G.shake(1.0);
+    G.UI.flashScreen();
+    FX.flash(V().set(p.x, 0.8, p.z), 0xffd890, R * 1.8, 0.55, 1.3);
+    FX.softRing(p, 0xfff4d8, 0.3, R * 0.9, 0.4, 0.12, 0.7, 'disc', 1.5);
+    FX.softRing(p, 0xffb040, 0.4, R * 1.5, 0.9, 0.1, 0.9, 'ring', 1.8);
+    FX.softRing(p, 0xff5a20, 0.2, R * 2.2, 1.3, 0.09, 0.6, 'ring', 1.5);
+    FX.softRing(p, 0xff8a30, 0.5, R * 1.1, 1.6, 0.08, 0.35, 'disc', 1.2);
+    FX.emit(V().set(p.x, 0.4, p.z), 160, 0xffc060, 6, 1.0, 1.4, 5, R * 0.4);
+    FX.emit(V().set(p.x, 0.4, p.z), 80, 0xff5a20, 4.5, 1.2, 1.8, 4, R * 0.3);
+    FX.emit(V().set(p.x, 0.3, p.z), 60, 0x4a3a40, 3, 1.6, 1.2, 3, R * 0.5, 0.7);   // 烟尘
+    setTimeout(() => FX.emit(V().set(p.x, 1.2, p.z), 70, 0xffe0a0, 2, 1.4, 2.4, -0.6, R * 0.6, 1.8), 120);   // 升腾的火光
+    let n = 0;
+    for (const e of S.enemies) {
+      if (e.dead) continue;
+      const d = hyp(e.pos.x, e.pos.z, p.x, p.z);
+      if (d > R) continue;
+      const k = d < R * 0.5 ? 1 : 0.65;
+      G.damage(e, dmg * k * (e.def.boss ? NK.bossMul : 1), 'magic');
+      if (!e.dead) e.stunT = Math.max(e.stunT, 1.4);
+      n++;
+    }
+    FX.text(V().set(p.x, 2.2, p.z), n ? `星核坠击 · ${n} 个敌人` : '星核坠击', 'nuketxt', 1.6);
+  };
+
   function fail(msg, silent) {
     if (!silent) { G.UI.toast(msg, 'warn'); A.play('error', 0.2); }
     return false;
@@ -1019,6 +1363,7 @@
   // ======================= 每帧 =======================
   G.update = function (dt) {
     S.time += dt;
+    if (S.nukeCd > 0) S.nukeCd -= dt;
     if (S.phase === 'combat') G.updateWave(dt);
     for (const e of S.enemies) if (!e.dead) e.update(dt);
     S.enemies = S.enemies.filter(e => !e.dead);

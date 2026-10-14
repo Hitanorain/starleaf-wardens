@@ -118,11 +118,25 @@
       <div class="skills">
         <button class="skill" id="sk-q" data-tip="tip:q">${UI.ic('assets/icons/skill_starfall.png', H.skills.q.icon)}<kbd>Q</kbd><div class="cdmask"></div><span class="cdt"></span></button>
         <button class="skill" id="sk-e" data-tip="tip:e">${UI.ic('assets/icons/skill_bloom.png', H.skills.e.icon)}<kbd>E</kbd><div class="cdmask"></div><span class="cdt"></span></button>
+        <button class="skill nuke" id="sk-n" data-tip="tip:nuke">${UI.ic('assets/icons/skill_nuke.png', G.NUKE.icon)}<kbd>G</kbd><div class="cdmask"></div><span class="cdt"></span><span class="ncost" id="nuke-cost"></span></button>
       </div>`;
     $('#sk-q').onclick = () => skillQ();
     $('#sk-e').onclick = () => G.Hero.castBloom();
+    $('#sk-n').onclick = () => nukeTool();
     $('#hero-portrait').onclick = () => { const p = G.Hero.pos; G.cam.target.set(p.x, 0, p.z); };
   }
+  function nukeTool() {
+    if (UI.tool === 'cast:nuke') { UI.setTool(null); return; }
+    if (S.nukeCd > 0) { UI.toast(`${G.NUKE.name}还在冷却（${Math.ceil(S.nukeCd)} 秒）`, 'warn'); return; }
+    if (S.gold < G.nukeCost()) { UI.toast(`金叶不足：${G.NUKE.name}需要 🍂${G.nukeCost()}`, 'warn'); return; }
+    UI.setTool('cast:nuke');
+  }
+  // 星核坠击落地时的全屏白光
+  UI.flashScreen = function () {
+    let f = $('#screen-flash');
+    if (!f) { f = document.createElement('div'); f.id = 'screen-flash'; $('#app').appendChild(f); }
+    f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+  };
   function skillQ() {
     if (!G.Hero.ready('q')) { UI.toast('星落还在冷却', 'warn'); return; }
     UI.setTool(UI.tool === 'cast:q' ? null : 'cast:q');
@@ -136,6 +150,7 @@
     if (t) { S.selected = null; }
     document.querySelectorAll('#build-bar [data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
     $('#sk-q').classList.toggle('active', t === 'cast:q');
+    $('#sk-n').classList.toggle('active', t === 'cast:nuke');
     document.body.dataset.tool = t || '';
     UI.refresh();
   };
@@ -256,7 +271,9 @@
       <div class="row"><b>${d.pulse ? '频率' : '攻速'}</b>${(1 / st.cd).toFixed(2)} 次/秒</div>
       <div class="row"><b>射程</b>${st.range.toFixed(1)} 格</div>`;
     if (st.splash) rows += `<div class="row"><b>爆炸</b>${st.splash.toFixed(1)} 格</div>`;
-    if (st.slow) rows += `<div class="row"><b>减速</b>${fmt(st.slow * 100)}%</div>`;
+    if (st.slow) rows += `<div class="row"><b>减速</b>${fmt(st.slow * 100)}%${d.frost ? `　${st.slowT.toFixed(1)} 秒` : ''}</div>`;
+    if (st.freeze) rows += `<div class="row"><b>冰冻</b>${st.freeze.toFixed(1)} 秒${st.freezeAoe ? '　范围冰爆' : ''}</div>`;
+    if (st.brittle) rows += `<div class="row"><b>寒蚀</b>护甲 -${fmt(st.brittle * 100)}%</div>`;
     if (st.multi > 1) rows += `<div class="row"><b>多重</b>${st.multi} 支箭</div>`;
     if (st.chain) rows += `<div class="row"><b>弹射</b>${st.chain} 次</div>`;
     rows += `<div class="row"><b>对空</b>${d.air ? '✔ 可以' : '✘ 不能'}</div>`;
@@ -266,15 +283,20 @@
       const nx = G.towerStats(tw.type, tw.level + 1, h, false);
       const N = d.levels[tw.level + 1];
       up = `<button id="tp-up" class="primary ${S.gold < c ? 'disabled' : ''}">⬆ 升级 🍂${c} <kbd>U</kbd></button>
-        <div class="upinfo">伤害 ${fmt(st.dmg)} → <b>${fmt(nx.dmg)}</b>　射程 ${st.range.toFixed(1)} → <b>${nx.range.toFixed(1)}</b>${N.note ? '<br>✨ ' + N.note : ''}</div>`;
+        <div class="upinfo">伤害 ${fmt(st.dmg)} → <b>${fmt(nx.dmg)}</b>　射程 ${st.range.toFixed(1)} → <b>${nx.range.toFixed(1)}</b>　生命 ${tw.maxHp} → <b>${N.hp}</b>${N.note ? '<br>✨ ' + N.note : ''}</div>`;
     } else up = `<div class="maxed">★ 已满级</div>`;
     const modes = d.pulse ? '' : `<div class="modes">目标：${[['first', '先头'], ['strong', '最强'], ['close', '最近']].map(([k, n]) => `<button data-mode="${k}" class="${tw.mode === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+    const hpPct = Math.max(0, tw.hp / tw.maxHp * 100);
+    const status = [tw.silenceT > 0 ? '<span class="st sil">🔇 噤声</span>' : '', tw.stunT > 0 ? '<span class="st stun">💫 震晕</span>' : '', tw.fogT > 0 ? '<span class="st fog">🌫️ 迷雾 攻速 -40%</span>' : ''].join('');
+    const repair = tw.hp < tw.maxHp ? `<button id="tp-repair" class="${S.gold < G.repairCost(tw) ? 'disabled' : ''}">🔧 修理 🍂${G.repairCost(tw)}</button>` : '';
     p.innerHTML = `<div class="tp-head">${towerIc(tw.type, 'mid')}<div><div class="tp-name">${d.name}</div><div class="stars">${'★'.repeat(tw.level + 1)}${'☆'.repeat(2 - tw.level)}</div></div><button class="x" id="tp-close">✕</button></div>
+      <div class="tp-hp"><div class="bar ${hpPct < 35 ? 'low' : ''}"><i style="width:${hpPct}%"></i></div><span>❤ ${fmt(tw.hp)} / ${tw.maxHp}　🛡 护甲 ${fmt(tw.armor * 100)}%</span></div>${status ? `<div class="tp-status">${status}</div>` : ''}${repair}
       ${bonus}<div class="stats">${rows}</div>${modes}${up}
       <button id="tp-sell" class="danger">出售 +🍂${Math.floor(tw.invested * S.mods.sell)} <kbd>Del</kbd></button>`;
     $('#tp-close').onclick = () => { S.selected = null; UI.refresh(); };
     $('#tp-sell').onclick = () => G.act.sell(tw);
     if ($('#tp-up')) $('#tp-up').onclick = () => G.act.upgrade(tw);
+    if ($('#tp-repair')) $('#tp-repair').onclick = () => G.act.repair(tw);
     p.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { tw.mode = b.dataset.mode; UI.refreshTower(); });
   };
 
@@ -299,11 +321,17 @@
       const k = key.slice(4), sk = G.HERO.skills[k];
       return `<h4>${sk.icon} ${sk.name} <kbd>${k.toUpperCase()}</kbd></h4><p>${sk.desc}</p><p class="dim">冷却 ${fmt(sk.cd * G.Hero.cdMul())} 秒${k === 'q' ? '　·　按 Q 后左键点击目标位置' : ''}</p>`;
     }
+    if (key === 'tip:nuke') {
+      const N = G.NUKE;
+      return `<h4>${N.icon} ${N.name} <kbd>${N.key}</kbd></h4><p>${N.desc}</p><p>伤害 <b>${fmt(N.dmg(Math.max(1, S.wave)))}</b>　范围 <b>${N.radius}</b> 格　落下前有 ${N.delay} 秒预警</p><p class="dim">花费 🍂${G.nukeCost()}（每用一次 +${N.costUp}）　冷却 ${N.cd} 秒${S.nukeCd > 0 ? `（还剩 ${Math.ceil(S.nukeCd)} 秒）` : ''}</p>`;
+    }
     if (key.startsWith('tip:tower:')) {
       const type = key.slice(10), d = G.TOWERS[type];
       const st = G.towerStats(type, 0, 1, false);
+      const extra = [st.slow ? `减速 <b>${fmt(st.slow * 100)}%</b>` : '', st.freeze ? `冰冻 <b>${st.freeze.toFixed(1)}</b> 秒` : ''].filter(Boolean).join('　');
       return `<h4>${d.icon} ${d.name} <kbd>${d.key}</kbd></h4><p>${d.desc}</p>
-        <p>伤害 <b>${fmt(st.dmg)}</b>（${d.dmgType === 'magic' ? '魔法' : '物理'}）　攻速 <b>${(1 / st.cd).toFixed(2)}</b>/秒　射程 <b>${st.range.toFixed(1)}</b>　对空 ${d.air ? '✔' : '✘'}</p>
+        <p>伤害 <b>${fmt(st.dmg)}</b>（${d.dmgType === 'magic' ? '魔法' : '物理'}）　${d.pulse ? '频率' : '攻速'} <b>${(1 / st.cd).toFixed(2)}</b>/秒　射程 <b>${st.range.toFixed(1)}</b>　对空 ${d.air ? '✔' : '✘'}${extra ? '<br>' + extra : ''}</p>
+        <p class="dim">生命 ${st.hp}　护甲 ${fmt(st.armor * 100)}%</p>
         <p class="dim">建造 🍂${G.towerCost(type, 0)}　·　只能建在高地上</p>`;
     }
     if (key.startsWith('piece:')) {
@@ -312,7 +340,7 @@
     }
     if (key.startsWith('enemy:')) {
       const type = key.slice(6), d = G.ENEMIES[type], om = S.om;
-      const hm = d.boss ? 1 : G.hpMul(S.phase === 'combat' ? S.wave : S.wave + 1) * om.hp;
+      const hm = d.boss ? 1 : G.hpMul(S.phase === 'combat' ? S.wave : S.wave + 1) * om.hp * CFG.ENEMY_HP;
       const hp = Math.round(d.hp * hm);
       const sh = Math.round((d.shield || 0) * hm * om.shieldMul) + (d.boss ? 0 : Math.round(hp * om.shieldPct));
       const ar = om.noArmor ? 0 : Math.min(0.75, Math.max(d.armor, d.armor + om.armor));
@@ -385,7 +413,7 @@
     e.className = win ? 'win' : 'lose';
     $('#end-title').textContent = win ? '月光古树得救了！' : '古树陷落……';
     $('#end-sub').textContent = win ? '腐化巨魔王倒下，森林重归宁静。' : `你坚持到了第 ${S.wave} 波。重新规划地形，再试一次吧！`;
-    $('#end-stats').innerHTML = `<div><b>${S.wave}</b>波次</div><div><b>${S.stats.kills}</b>击杀</div><div><b>${S.stats.built}</b>建塔</div><div><b>${S.lives}</b>剩余生命</div><div><b>${G.Hero.lvl}</b>露娜等级</div>`;
+    $('#end-stats').innerHTML = `<div><b>${S.wave}</b>波次</div><div><b>${S.stats.kills}</b>击杀</div><div><b>${S.stats.built}</b>建塔</div><div><b>${S.stats.lost}</b>塔被摧毁</div><div><b>${S.lives}</b>剩余生命</div><div><b>${G.Hero.lvl}</b>露娜等级</div>`;
   };
 
   function cycleSpeed() {
@@ -505,6 +533,11 @@
         if (p && G.Hero.castStarfall(p)) UI.setTool(null);
         return;
       }
+      if (t === 'cast:nuke') {
+        const p = groundPoint();
+        if (p && G.act.nuke(p)) UI.setTool(null);
+        return;
+      }
       S.selected = h && h.tower ? h.tower : null;
       if (S.selected) A.play('hit');
       UI.refresh();
@@ -534,6 +567,7 @@
       if (k === 'r' && UI.tool && (UI.tool.startsWith('piece:') || UI.tool.startsWith('region:'))) { UI.rot = (UI.rot + 1) % 4; UI.slotKey = null; A.play('hit'); UI.refresh(); return; }
       if (k === 'q') { skillQ(); return; }
       if (k === 'e') { G.Hero.castBloom(); return; }
+      if (k === 'g') { nukeTool(); return; }
       if (k === 'u' && S.selected) { G.act.upgrade(S.selected); return; }
       if ((k === 'delete' || k === 'backspace') && S.selected) { G.act.sell(S.selected); return; }
     });
@@ -560,7 +594,7 @@
   }
 
   // ---------------- 每帧 ----------------
-  const sp = {};
+  const sp = {}, sp0 = new THREE.Vector3();
   UI.frame = function (dt) {
     // 镜头键盘平移
     const k = UI.keys, pan = G.cam.dist * 0.9 * dt;
@@ -663,6 +697,13 @@
         const pushes = Wd.portals.filter(p => (p.axis === 'w' || p.axis === 'e') ? Math.floor(p.row / CFG.RS) === hover.ry && Math.abs(Math.floor(p.x / CFG.RS) - hover.rx) === 1 : Math.floor(p.col / CFG.RS) === hover.rx && Math.abs(Math.floor(p.y / CFG.RS) - hover.ry) === 1);
         wtip = UI.slotErr ? `<span class="bad">${UI.slotErr}</span>` : `放置「${G.REGIONS[offer.id].name}」${pushes.length ? `<br><b class="good">${pushes.map(p => p.name).join('、')}会后退，敌人路线变长！</b>` : ''}<br><span class="dim">R 旋转 · 右键取消</span>`;
       } else wtip = '把区域放到发光的空位上';
+    } else if (tool === 'cast:nuke' && mouseIn) {
+      const p = groundPoint();
+      if (p) {
+        showRange(p.x, p.z, G.NUKE.radius, 0, 0xff7a40);
+        let n = 0; for (const e of S.enemies) if (!e.dead && Math.hypot(e.pos.x - p.x, e.pos.z - p.z) <= G.NUKE.radius) n++;
+        wtip = `左键召唤 ${G.NUKE.name}（🍂${G.nukeCost()}）${n ? `<br><b class="good">范围内 ${n} 个敌人</b>` : ''}　右键取消`;
+      }
     } else if (tool === 'cast:q' && mouseIn) {
       const p = groundPoint();
       if (p) { showRange(p.x, p.z, G.HERO.skills.q.radius, 0, 0xfff27a); wtip = '左键释放 星落　右键取消'; }
@@ -672,7 +713,7 @@
         showRange(h.tower.pos.x, h.tower.pos.z, st.range, st.minRange, 0xfff4c0);
       }
     }
-    if (tool === 'cast:q' || (tool && tool.startsWith('tower:')) || tool === 'raise' || tool === 'lower') { /* 已处理 */ }
+
     if (S.selected) {
       const tw = S.selected, st = tw.stats();
       showRange(tw.pos.x, tw.pos.z, st.range, st.minRange, 0x9ff4ff);
@@ -705,6 +746,19 @@
         e.dmgAcc = 0; e.dmgT = 0.3;
       }
     }
+    // 塔的血条（受损时显示）
+    for (const t of S.towers) {
+      const show = t.hp < t.maxHp;
+      if (show) FX.toScreen(sp0.set(t.pos.x, Wd.top(t.tile) + 1.15, t.pos.z), sp);
+      t.hb.style.display = show && sp.vis ? '' : 'none';
+      if (show) {
+        t.hb.style.transform = `translate(${sp.x}px, ${sp.y}px) translate(-50%,-50%)`;
+        t.hpEl.style.width = Math.max(0, t.hp / t.maxHp * 100) + '%';
+        t.hb.classList.toggle('low', t.hp / t.maxHp < 0.35);
+        t.hb.classList.toggle('hit', t.hurtT > 0);
+        if (t.hurtT > 0) t.hurtT -= dt;
+      }
+    }
     FX.updateTexts(dt);
 
     // 顶栏实时数据
@@ -728,13 +782,16 @@
       el.querySelector('.cdt').textContent = cd > 0 ? Math.ceil(cd) : '';
       el.classList.toggle('ready', cd <= 0);
     }
+    {
+      const el = $('#sk-n'), cd = S.nukeCd || 0, cost = G.nukeCost();
+      el.querySelector('.cdmask').style.height = cd > 0 ? (cd / G.NUKE.cd * 100) + '%' : '0';
+      el.querySelector('.cdt').textContent = cd > 0 ? Math.ceil(cd) : '';
+      $('#nuke-cost').textContent = '🍂' + cost;
+      el.classList.toggle('ready', cd <= 0 && S.gold >= cost);
+      el.classList.toggle('poor', S.gold < cost);
+    }
     if (S.selected && UI.panelT === undefined) UI.panelT = 0;
     UI.panelT = (UI.panelT || 0) - dt;
-    if (S.selected && UI.panelT <= 0) { UI.panelT = 0.5; updateUpBtn(); }
+    if (S.selected && UI.panelT <= 0) { UI.panelT = 0.5; UI.refreshTower(); }
   };
-  function updateUpBtn() {
-    const b = $('#tp-up');
-    if (!b || !S.selected || S.selected.level >= 2) return;
-    b.classList.toggle('disabled', S.gold < G.towerCost(S.selected.type, S.selected.level + 1));
-  }
 })();

@@ -7,14 +7,14 @@
   (function () {
     const c = document.createElement('canvas'); c.width = c.height = 64;
     const x = c.getContext('2d');
-    const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    const g = x.createRadialGradient(32, 32, 0, 32, 32, 30);   // 半径略小于半宽：贴图边缘完全透明，超亮的闪光也不会露出方形边
     g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, 'rgba(255,255,255,0.8)'); g.addColorStop(1, 'rgba(255,255,255,0)');
     x.fillStyle = g; x.fillRect(0, 0, 64, 64);
     G.dotTex = new THREE.CanvasTexture(c);
   })();
 
   // ---------- 粒子系统 ----------
-  const N = 2500;
+  const N = 5000;
   let pts, pos, col, vel, life, maxLife, base, grav, head = 0;
   FX.init = function (scene) {
     const geo = new THREE.BufferGeometry();
@@ -98,7 +98,7 @@
   function radialTex(stops) {
     const c = document.createElement('canvas'); c.width = c.height = 256;
     const x = c.getContext('2d');
-    const g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+    const g = x.createRadialGradient(128, 128, 0, 128, 128, 124);
     for (const [o, a] of stops) g.addColorStop(o, `rgba(255,255,255,${a})`);
     x.fillStyle = g; x.fillRect(0, 0, 256, 256);
     return new THREE.CanvasTexture(c);

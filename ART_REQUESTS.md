@@ -40,13 +40,21 @@
 | `assets/icons/tower_obelisk.png` | 星辉方尖碑 | 深蓝紫色的四棱方尖碑，碑身刻着发光符文，顶端悬浮一颗旋转的紫青色八面体水晶，周围环绕小光球 |
 | `assets/icons/tower_thorn.png` | 荆棘藤蔓 | 一团深绿色的尖刺藤蔓从土堆里盘绕生长，中央开出一朵发光的粉色五瓣花 |
 | `assets/icons/tower_catapult.png` | 水晶投石机 | 木制小型投石机，抛臂的皮兜里装着一颗发光的青色魔法水晶，金属包边 |
+| `assets/icons/tower_chime.png` | 霜铃塔 | 两根冰晶柱撑起的拱门，下面悬挂一口淡蓝色发光的冰铃，铃身结霜，周围有一圈寒霜涟漪和雪花 |
+| `assets/icons/tower_frost.png` | 凛冬尖碑 | 冰岩台座上耸立的尖锐冰晶尖碑，周围环绕几根冰棱，顶端一颗白热的冰核，寒气缭绕 |
 | `assets/icons/skill_starfall.png` | 技能·星落 | 一颗拖着金色长尾的流星从天而降，砸出金色光环与星屑 |
 | `assets/icons/skill_bloom.png` | 技能·森之绽放 | 一圈樱花与发光花瓣向外绽放，中心有柔和的粉色光芒 |
+| `assets/icons/skill_nuke.png` | 星核坠击 | 一颗燃烧着金橙色火焰的巨大星核从天而降，拖着长长的火尾，下方地面泛起冲击波光环 |
 | `assets/icons/enemy_goblin.png` | 哥布林 | 小个子绿皮哥布林，大尖耳，红色发光眼睛，穿紫色破布衣，拿木棒，表情狡猾（可爱一点，不要恐怖） |
 | `assets/icons/enemy_wolf.png` | 腐化狼 | 深紫色毛发的瘦长狼，洋红色发光眼睛，背上有腐化的紫色雾气，奔跑姿势 |
 | `assets/icons/enemy_orc.png` | 兽人蛮兵 | 魁梧的绿皮兽人，獠牙，穿灰色铁甲片，拿斧头 |
 | `assets/icons/enemy_skeleton.png` | 骷髅盾卫 | 骷髅士兵，眼窝发蓝光，手持蓝色圆盾，周身有一层淡蓝色半透明护盾泡泡 |
 | `assets/icons/enemy_bat.png` | 暗影蝙蝠 | 深紫色蝙蝠，翅膀张开，洋红色发光眼睛 |
+| `assets/icons/enemy_slinger.png` | 投石地精 | 戴皮帽的绿皮小地精，背着一袋石头，正抡起投石索，表情顽皮 |
+| `assets/icons/enemy_shaman.png` | 迷雾萨满 | 佝偻的紫袍法师，戴骨质面具，手持顶端是紫色雾珠的木杖，脚下翻涌紫色雾气 |
+| `assets/icons/enemy_wisp.png` | 噤声精怪 | 漂浮的暗影小球，正中一只发光的白色独眼，身后拖着几条紫黑色触须 |
+| `assets/icons/enemy_golem.png` | 熔岩巨像（Boss） | 由深灰岩块堆成的巨人，岩缝里透出橙红色熔岩光，双眼发黄光，双拳砸地 |
+| `assets/icons/enemy_lich.png` | 亡灵巫王（Boss） | 悬浮的黑绿色长袍骷髅巫王，头戴金冠，手持顶端燃着幽绿魂火的法杖，周身有绿色魔法护盾 |
 | `assets/icons/enemy_ogre.png` | 食人魔督军（Boss） | 灰紫色皮肤的高大食人魔，头上两只弯角，胸口嵌着洋红色腐化水晶，扛着大狼牙棒 |
 | `assets/icons/enemy_troll.png` | 腐化巨魔王（最终 Boss） | 巨大的紫色巨魔，背上长苔藓和一排洋红色发光水晶，头戴金色尖刺王冠，拿粗大的木棍，威严 |
 

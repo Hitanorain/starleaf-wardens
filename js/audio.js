@@ -63,6 +63,15 @@
     thunder: () => { noise(0.12, 0.6, 5000); noise(1.6, 0.45, 220, 0.04); tone(55, 1.2, 'sine', 0.35, -20, 0.02); },
     rumble: () => { noise(1.8, 0.12, 160); },
     portal: () => { tone(90, 1.2, 'sawtooth', 0.12, 60); noise(1.0, 0.15, 400); },
+    chime: () => { [1568, 2093, 2637].forEach((f, i) => tone(f, 0.9 - i * 0.2, 'sine', 0.05, 0, i * 0.02)); noise(0.3, 0.04, 7000); },
+    ice: () => { tone(2400, 0.12, 'triangle', 0.05, -1200); noise(0.1, 0.06, 6000); },
+    freeze: () => { noise(0.25, 0.12, 5000); tone(1800, 0.3, 'sine', 0.05, 900); },
+    crack: () => { noise(0.08, 0.12, 4000); tone(900, 0.06, 'square', 0.03, -500); },
+    sling: () => { noise(0.1, 0.06, 1200); tone(400, 0.08, 'triangle', 0.04, -200); },
+    silence: () => { tone(220, 0.5, 'sawtooth', 0.06, -120); tone(233, 0.5, 'sine', 0.06, -130); },
+    collapse: () => { noise(0.6, 0.35, 500); tone(70, 0.6, 'sine', 0.3, -30); noise(0.3, 0.15, 2500, 0.1); },
+    nukeCall: () => { tone(300, 1.5, 'sawtooth', 0.06, 900); noise(1.5, 0.1, 1200); },
+    nuke: () => { noise(0.2, 0.7, 4000); noise(2.2, 0.55, 260, 0.03); tone(45, 1.6, 'sine', 0.45, -20, 0.02); tone(90, 1.0, 'sawtooth', 0.12, -50, 0.05); },
   };
   A.play = function (name, minGap = 0.045) {
     if (A.muted || !SFX[name]) return;
