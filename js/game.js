@@ -20,8 +20,8 @@
       hand: [], expandTokens: 0, offers: null, rng: Math.random,
       omens: [], om: Object.assign({}, G.OMEN_DEFAULT), purged: false, seenOmen: false, lastOmens: [], boltT: 0,
       mods: {
-        dmg: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1, mire: 1, lure: 1 },
-        range: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1, mire: 1, lure: 1 },
+        dmg: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1, mire: 1, lure: 1, lotus: 1, spring: 1 },
+        range: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1, mire: 1, lure: 1, lotus: 1, spring: 1 },
         rate: 1, heightMul: 1, cost: 1, sell: CFG.SELL_RATE, killGold: 1, leyBonus: 0, splash: 1, heroDmg: 1, heroCd: 1,
       },
     });
@@ -420,7 +420,7 @@
       cd: L.cd / (S.mods.rate * om.rate * (buff ? 1 + G.HERO.skills.e.haste : 1)),
       splash: (L.splash || 0) * S.mods.splash, minRange: L.minRange || 0, slow: L.slow || 0,
       slowT: L.slowT || 1.2, freeze: L.freeze || 0, freezeAoe: L.freezeAoe || 0, brittle: L.brittle || 0,
-      confuse: L.confuse || 0, targets: L.targets || 0,
+      confuse: L.confuse || 0, targets: L.targets || 0, heal: L.heal || 0, regen: L.regen || 0, haste: L.haste || 0,
       hp: L.hp, armor: L.armor || 0,
       multi: L.multi || 1, chain: L.chain || 0, rM, dM,
     };
@@ -459,6 +459,7 @@
     stats() {
       const st = G.towerStats(this.type, this.level, this.tile.h, this.buff > 0);
       if (this.fogT > 0) st.cd /= G.ENEMIES.shaman.fogAura.rate;   // 迷雾：攻速 -40%
+      if (this.springT > 0 && !this.def.water) st.cd /= 1 + this.springHaste;   // 灵泉水藻：攻速加成
       return st;
     }
     get armor() { return this.def.levels[this.level].armor || 0; }
@@ -547,6 +548,10 @@
       if (this.m.bloom) this.m.bloom.scale.setScalar((this.level === 2 ? 1.25 : this.level ? 1.1 : 1) * (1 + Math.max(0, this.kick) * 0.6));
       if (this.m.arm) this.m.arm.rotation.x += ((this.kick > 0 ? -1.2 : 0.5) - this.m.arm.rotation.x) * Math.min(1, dt * (this.kick > 0 ? 25 : 3));
 
+      if (this.springT > 0) {
+        this.springT -= dt;
+        if (Math.random() < dt * 3) FX.emit(V().set(this.pos.x + (Math.random() - 0.5) * 0.4, ty + 0.2, this.pos.z + (Math.random() - 0.5) * 0.4), 1, 0x7fe8ff, 0.2, 0.9, 0.6, -0.4, 0.05, 1.3);
+      }
       // 干扰状态的表现
       if (this.fogT > 0) { this.fogT -= dt; if (Math.random() < dt * 6) FX.emit(V().set(this.pos.x, ty + 0.5, this.pos.z), 1, 0x9a5cff, 0.3, 0.8, 0.4, -0.2, 0.4, 1.0); }
       if (this.chains) {
@@ -581,6 +586,7 @@
         return;
       }
       if (this.def.trap) { this.trapUpdate(dt, st); return; }
+      if (this.def.water) { this.waterUpdate(dt, st); return; }
       const tg = this.targets(st, st.multi);
       if (!tg.length) return;
       if (this.m.head) {
@@ -624,6 +630,34 @@
         const to = e.pos.clone().addScaledVector(e.vel, T * 0.9);
         to.y = 0;
         S.projectiles.push(new Proj('rock', from, null, { dmg: st.dmg, splash: st.splash, to, T, level: this.level }));
+      }
+    }
+    // 水生植物：睡莲定时为古树恢复生命；水藻滋养周围的塔
+    waterUpdate(dt, st) {
+      if (this.type === 'lotus') {
+        if (this.cd > 0 || S.lives >= CFG.START_LIVES) return;
+        this.cd = st.cd; this.kick = 0.5;
+        S.lives = Math.min(CFG.START_LIVES, S.lives + st.heal);
+        const from = this.muzzle(), hp = Wd.heartObj.group.position, to = V().set(hp.x, 1.4, hp.z);
+        FX.beam(from, to, 0xfff2b0, 0.6); FX.beam(from, to, 0x9ff4ff, 0.5);
+        FX.flash(from, 0xfff2b0, 0.8, 0.3);
+        FX.softRing(V().set(hp.x, 0, hp.z), 0x9fffc0, 0.3, 1.6, 0.9, 0.1, 0.6);
+        FX.emit(to, 24, 0xb8ffd0, 1.4, 0.9, 0.6, -0.3, 0.4);
+        FX.text(V().set(hp.x, 2.3, hp.z), '+' + st.heal + ' ♥', 'healtxt', 1.2);
+        A.play('heal', 0.3);
+        G.UI.refresh();
+      } else if (this.type === 'spring') {
+        for (const t of S.towers) {
+          if (hyp(t.pos.x, t.pos.z, this.pos.x, this.pos.z) > st.range) continue;
+          t.springHaste = t.springT > 0 ? Math.max(t.springHaste || 0, st.haste) : st.haste;   // 多株水藻取最高
+          t.springT = 0.3;
+          if (t.hp < t.maxHp) t.hp = Math.min(t.maxHp, t.hp + st.regen * dt);
+        }
+        this.fxT = (this.fxT || 0) - dt;
+        if (this.fxT <= 0) {
+          this.fxT = 0.25;
+          FX.emit(V().set(this.pos.x + (Math.random() - 0.5) * 0.3, -0.05, this.pos.z + (Math.random() - 0.5) * 0.3), 2, 0x9ff4ff, 0.15, 1.2, 1.2, -0.6, 0.05, 1.4);
+        }
       }
     }
     // 地面陷阱：范围内的地面敌人
@@ -1228,7 +1262,9 @@
     if (!t) return '无效位置';
     if (t.locked) return '这里还没有开拓';
     if (t.tower) return '这里已经有塔了';
-    if (G.TOWERS[type].ground) {
+    if (G.TOWERS[type].water) {
+      if (t.type !== 'water') return '水生植物只能种在水面上';
+    } else if (G.TOWERS[type].ground) {
       if (t.type !== 'grass' || t.h !== 0) return '陷阱只能放在平地上（可以放在敌人路线上）';
       if (t.fixed) return '不能放在传送门或古树上';
     } else {

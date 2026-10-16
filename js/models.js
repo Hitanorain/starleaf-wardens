@@ -889,6 +889,57 @@
         ring.castShadow = false; spin(ring, 0.6, 'z');
       }
       r.muzzle.position.set(0, 0.45, 0); g.add(r.muzzle);
+    } else if (type === 'lotus') {
+      // 月泉睡莲：几片浮叶 + 一朵发光的睡莲，高级时有月光光环和浮动的光球
+      const pad = M.mat(0x4f9a5a, { shininess: 40 });
+      const pads = [[0.18, 0.1, 0.17], [-0.16, 0.12, 0.14], [0.02, -0.2, 0.15]];
+      if (level >= 1) pads.push([-0.22, -0.1, 0.11]);
+      for (const [x, z, r0] of pads) {
+        const p0 = part(g, new THREE.CylinderGeometry(1, 1, 1, 14, 1, false, 0.3, Math.PI * 2 - 0.6), pad, [x, 0.02, z], [r0, 0.012, r0], [0, Math.atan2(x, z), 0]);
+        p0.castShadow = false;
+      }
+      const petal = level === 2 ? 0xfff4d8 : 0xffd0e8, glowC = level === 2 ? 0xfff0a0 : 0xffb0d8;
+      const flower = new THREE.Group(); flower.position.y = 0.06; g.add(flower);
+      const rings = [[8, 0.09, 0.55], [6, 0.06, 0.95]];
+      if (level >= 1) rings.unshift([10, 0.12, 0.3]);
+      rings.forEach(([n, rr, tilt], k) => {
+        for (let i = 0; i < n; i++) {
+          const a = i / n * Math.PI * 2 + k * 0.3;
+          part(flower, GEO.sphere, M.mat(petal, { emissive: glowC, emissiveIntensity: 0.35 }), [Math.cos(a) * rr, 0.02 + k * 0.015, Math.sin(a) * rr], [0.07, 0.022, 0.035], [0, -a, tilt]);
+        }
+      });
+      part(flower, GEO.sphere, M.glow(0xfff2a0, 1, false, 2.2), [0, 0.06, 0], 0.035).castShadow = false;
+      part(flower, GEO.sphere, M.glow(glowC, 0.3, true, 1.4), [0, 0.06, 0], 0.16).castShadow = false;
+      r.bloom = flower;
+      if (level === 2) {
+        const halo = part(g, new THREE.TorusGeometry(0.3, 0.012, 4, 32), M.glow(0xfff2b0, 0.8, true, 1.8), [0, 0.04, 0], 1, [Math.PI / 2, 0, 0]);
+        halo.castShadow = false;
+        const orbs = new THREE.Group(); orbs.position.y = 0.3; g.add(orbs);
+        for (let i = 0; i < 3; i++) bob(part(orbs, GEO.sphere, M.glow(0xfff6c8, 1, false, 2), [Math.cos(i * 2.09) * 0.22, 0, Math.sin(i * 2.09) * 0.22], 0.025), 0.05, 1.5, i).castShadow = false;
+        spin(orbs, 0.8);
+      }
+      r.muzzle.position.set(0, 0.12, 0); g.add(r.muzzle);
+
+    } else if (type === 'spring') {
+      // 灵泉水藻：一丛青绿色的水藻，顶端发光；中间冒出灵泉气泡
+      const kelp = M.mat(0x2f8a7a, { emissive: 0x0a3a3a, emissiveIntensity: 0.4 });
+      const n = [5, 7, 9][level];
+      const fronds = new THREE.Group(); g.add(fronds);
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2, rr = 0.1 + (i % 2) * 0.08, h = 0.22 + (i % 3) * 0.08 + level * 0.04;
+        part(fronds, GEO.cone5, kelp, [Math.cos(a) * rr, h / 2, Math.sin(a) * rr], [0.03, h, 0.03], [Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3]);
+        part(fronds, GEO.sphere, M.glow(0x9ff4ff, 1, false, 1.8), [Math.cos(a) * (rr + h * 0.14), h + 0.01, Math.sin(a) * (rr + h * 0.14)], 0.018).castShadow = false;
+      }
+      r.vines = fronds;
+      for (let i = 0; i < 3 + level; i++)
+        bob(part(g, GEO.sphere, M.glow(0xcff8ff, 0.7, false, 1.5), [(i % 2 - 0.5) * 0.06, 0.12 + i * 0.09, ((i >> 1) % 2 - 0.5) * 0.06], 0.02 + (i % 2) * 0.01), 0.05, 2.4 + i * 0.5, i).castShadow = false;
+      const ring = part(g, new THREE.RingGeometry(0.22, 0.3, 32), M.glow(0x7fe8ff, 0.45, true, 1.4), [0, 0.02, 0], 1, [-Math.PI / 2, 0, 0]);
+      ring.castShadow = false; spin(ring, 0.5, 'z');
+      if (level === 2) {
+        const crystal = part(g, GEO.oct, M.glow(0xbff8ff, 1, false, 2), [0, 0.55, 0], [0.05, 0.09, 0.05]);
+        crystal.castShadow = false; spin(bob(crystal, 0.04, 1.8), 1.4);
+      }
+      r.muzzle.position.set(0, 0.3, 0); g.add(r.muzzle);
     }
     // 等级标记：金色小宝石
     for (let i = 0; i <= level; i++) {

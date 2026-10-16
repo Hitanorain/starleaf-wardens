@@ -40,6 +40,8 @@
 | `assets/icons/tower_obelisk.png` | 星辉方尖碑 | 深蓝紫色的四棱方尖碑，碑身刻着发光符文，顶端悬浮一颗旋转的紫青色八面体水晶，周围环绕小光球 |
 | `assets/icons/tower_thorn.png` | 荆棘丛（地面陷阱） | 一团深绿色的尖刺藤蔓从土堆里盘绕生长，中央开出一朵发光的粉色五瓣花 |
 | `assets/icons/tower_mire.png` | 泥沼藤网（地面陷阱） | 一摊冒着气泡的深褐色泥沼，表面缠着几道绿色藤网，边上长着发光的小蘑菇 |
+| `assets/icons/tower_lotus.png` | 月泉睡莲（水生） | 浮在水面上的一朵洁白发光睡莲，下面是几片圆形荷叶，花心洒下金色月光，周围有一圈淡金色光环 |
+| `assets/icons/tower_spring.png` | 灵泉水藻（水生） | 一丛青绿色的水藻从水中伸出，叶尖发出青白色光，中间冒出一串发光的气泡 |
 | `assets/icons/tower_lure.png` | 迷魂花阵（地面陷阱） | 一朵巨大的粉紫色发光花朵，花心喷出闪闪发光的花粉，几只粉色蝴蝶绕着飞 |
 | `assets/icons/tower_catapult.png` | 水晶投石机 | 木制小型投石机，抛臂的皮兜里装着一颗发光的青色魔法水晶，金属包边 |
 | `assets/icons/tower_chime.png` | 霜铃塔 | 两根冰晶柱撑起的拱门，下面悬挂一口淡蓝色发光的冰铃，铃身结霜，周围有一圈寒霜涟漪和雪花 |

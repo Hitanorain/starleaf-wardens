@@ -120,6 +120,25 @@ G.TOWERS = {
       { hp: 240, armor: 0.2,  cost: 140, dmg: 0, cd: 5.0, range: 1.7, confuse: 3.0, targets: 5, note: '一次迷惑 5 个敌人' },
     ],
   },
+  // ---------- 水生植物：只能种在水面上 ----------
+  lotus: {
+    name: '月泉睡莲', key: '9', icon: '🪷', dmgType: 'magic', air: false, water: true,
+    desc: '在月光下盛开的睡莲。战斗中每隔一段时间向月光古树送去一道月光，恢复 1 点生命（最多恢复到初始的 20 点）。',
+    levels: [
+      { hp: 120, armor: 0.1,  cost: 120, dmg: 0, cd: 35, range: 0.6, heal: 1 },
+      { hp: 170, armor: 0.15, cost: 100, dmg: 0, cd: 26, range: 0.6, heal: 1 },
+      { hp: 230, armor: 0.2,  cost: 150, dmg: 0, cd: 18, range: 0.6, heal: 1, note: '月光更频繁' },
+    ],
+  },
+  spring: {
+    name: '灵泉水藻', key: '0', icon: '💧', dmgType: 'magic', air: false, water: true,
+    desc: '吐着灵泉气泡的水藻。水汽滋养范围内的塔：持续修复生命，并提升攻击速度。',
+    levels: [
+      { hp: 120, armor: 0.1,  cost: 90,  dmg: 0, cd: 1, range: 2.2, regen: 3, haste: 0.12 },
+      { hp: 170, armor: 0.15, cost: 90,  dmg: 0, cd: 1, range: 2.5, regen: 5, haste: 0.2 },
+      { hp: 230, armor: 0.2,  cost: 140, dmg: 0, cd: 1, range: 2.8, regen: 8, haste: 0.3, note: '攻速加成 +30%' },
+    ],
+  },
 };
 
 G.ENEMIES = {

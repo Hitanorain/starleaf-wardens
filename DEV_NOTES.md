@@ -106,6 +106,8 @@
 - 陷阱逻辑在 `Tower.trapUpdate()`：thorn 没有冷却，按每秒伤害 `dmg / cd` 对范围内地面敌人持续造成魔法伤害；mire 每帧对范围内敌人 `applySlow(slow, slowT)`（离开后还持续 slowT 秒），3 级附带腐蚀伤害；lure 有敌人进入范围就迷惑最近的 `targets` 个，然后进入 `cd` 冷却。
 - **所有减速都走 `enemy.applySlow()`**：连续减速超过 `CFG.SLOW_CAP`（4 秒）就挣脱，`SLOW_IMMUNE`（1.5 秒）内不吃减速。**混乱** `enemy.confuse(dur)`：沿距离场往回走（`backStep`），结束后 `CONFUSE_IMMUNE` 秒免疫；Boss 与飞行单位不受混乱。**防止来回循环**：同一株迷魂花对同一个敌人只生效一次（`enemy.confusedBy`），每个敌人一生最多被迷惑 `CONFUSE_MAX` 次，混乱时走路速度 ×`CONFUSE_SPEED`。
 
+- **水生植物**（`water: true`，快捷键 9 / 0）：只能种在 `type === 'water'` 的地块上，逻辑在 `Tower.waterUpdate()`。月泉睡莲 lotus：战斗中每 `cd` 秒给古树 +`heal` 生命（不超过 `CFG.START_LIVES`）；灵泉水藻 spring：范围内的塔每秒恢复 `regen` 生命，并设置 `tower.springT / springHaste`，在 `Tower.stats()` 里提升攻速（多株取最高）。建造栏按 高地塔 | 地面陷阱 | 水生植物 分组。
+
 ## 6.6 无尽模式（`endless.js`）
 - 标题界面选择模式，`G.mode = 'campaign' | 'endless'`（存 localStorage）。`G.newMap` 按模式设置 `CFG.START_REGIONS`（无尽：全部 7×5 区域）和 `CFG.PORTAL_B_WAVE`（无尽：第 3 轮）。开局 `G.Endless.setupRun()`：`S.endless = true`、400 金叶、16 地脉、手牌补满、没有区域扩张。
 - `S.wave` 在无尽模式里就是"轮数"。`G.waveGroups(n)` 按模式取出兵组（无尽：`Endless.groups(r)`，2 段随机进攻，按轮缓存，备战面板的预告与实际一致）；`G.queueGroups()` 把出兵组展开成队列（无尽模式在这里抽精英怪）。

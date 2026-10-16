@@ -115,11 +115,13 @@
       <button class="tool" data-tool="lower" data-tip="tip:lower">${UI.ic('assets/icons/tool_lower.png', '⛏️')}<span class="nm">削低</span><span class="cost ley">💠1</span><kbd>X</kbd></button>
       <button class="tool small" id="btn-undo" data-tip="撤销本次备战阶段的上一步操作（地形 / 建塔），全额返还。快捷键 Ctrl+Z">↶<span class="nm">撤销</span></button>
       <div class="sep"></div>`;
-    const types = Object.keys(G.TOWERS).sort((a, b) => G.TOWERS[a].key - G.TOWERS[b].key);
+    const ord = k => +k || 10;   // 0 键排在最后
+    const group = d => d.water ? 2 : d.ground ? 1 : 0;
+    const types = Object.keys(G.TOWERS).sort((a, b) => ord(G.TOWERS[a].key) - ord(G.TOWERS[b].key));
     types.forEach((type, i) => {
       const d = G.TOWERS[type];
-      if (d.ground && (i === 0 || !G.TOWERS[types[i - 1]].ground)) h += `<div class="sep"></div>`;
-      h += `<button class="tool tower ${d.ground ? 'trap' : ''}" data-tool="tower:${type}" data-tip="tip:tower:${type}">${towerIc(type)}<span class="nm">${d.name}</span><span class="cost gold" data-cost="${type}">🍂${d.levels[0].cost}</span><kbd>${d.key}</kbd></button>`;
+      if (i > 0 && group(d) !== group(G.TOWERS[types[i - 1]])) h += `<div class="sep"></div>`;
+      h += `<button class="tool tower ${d.water ? 'water' : d.ground ? 'trap' : ''}" data-tool="tower:${type}" data-tip="tip:tower:${type}">${towerIc(type)}<span class="nm">${d.name}</span><span class="cost gold" data-cost="${type}">🍂${d.levels[0].cost}</span><kbd>${d.key}</kbd></button>`;
     });
     $('#build-bar').innerHTML = h;
     $('#build-bar').querySelectorAll('[data-tool]').forEach(b => b.onclick = () => UI.setTool(UI.tool === b.dataset.tool ? null : b.dataset.tool));
@@ -286,19 +288,20 @@
     const st = tw.stats();
     const d = tw.def, L = d.levels[tw.level];
     const h = tw.tile.h;
-    const bonus = d.ground ? `<span class="hb-tag trap">地面陷阱：只影响地面敌人，敌人可以从上面走过</span>`
+    const bonus = d.water ? `<span class="hb-tag water">水生植物：种在水面上</span>`
+      : d.ground ? `<span class="hb-tag trap">地面陷阱：只影响地面敌人，敌人可以从上面走过</span>`
       : h >= 2 ? `<span class="hb-tag">地势 ${h} 级：射程 +${fmt((st.rM - 1) * 100)}%　伤害 +${fmt((st.dM - 1) * 100)}%</span>` : `<span class="hb-tag dim">地势 1 级（抬高到 2、3 级可获得射程与伤害加成）</span>`;
-    let rows = d.ground ? trapRows(d, st)
+    let rows = d.ground || d.water ? trapRows(d, st, tw)
       : `<div class="row"><b>伤害</b>${fmt(st.dmg)} <small>${d.dmgType === 'magic' ? '魔法' : '物理'}</small></div>
       <div class="row"><b>${d.pulse ? '频率' : '攻速'}</b>${(1 / st.cd).toFixed(2)} 次/秒</div>
       <div class="row"><b>射程</b>${st.range.toFixed(1)} 格</div>`;
     if (st.splash) rows += `<div class="row"><b>爆炸</b>${st.splash.toFixed(1)} 格</div>`;
-    if (st.slow && !d.ground) rows += `<div class="row"><b>减速</b>${fmt(st.slow * 100)}%${d.frost ? `　${st.slowT.toFixed(1)} 秒` : ''}</div>`;
+    if (st.slow && !d.ground && !d.water) rows += `<div class="row"><b>减速</b>${fmt(st.slow * 100)}%${d.frost ? `　${st.slowT.toFixed(1)} 秒` : ''}</div>`;
     if (st.freeze) rows += `<div class="row"><b>冰冻</b>${st.freeze.toFixed(1)} 秒${st.freezeAoe ? '　范围冰爆' : ''}</div>`;
     if (st.brittle) rows += `<div class="row"><b>寒蚀</b>护甲 -${fmt(st.brittle * 100)}%</div>`;
     if (st.multi > 1) rows += `<div class="row"><b>多重</b>${st.multi} 支箭</div>`;
     if (st.chain) rows += `<div class="row"><b>弹射</b>${st.chain} 次</div>`;
-    if (!d.ground) rows += `<div class="row"><b>对空</b>${d.air ? '✔ 可以' : '✘ 不能'}</div>`;
+    if (!d.ground && !d.water) rows += `<div class="row"><b>对空</b>${d.air ? '✔ 可以' : '✘ 不能'}</div>`;
     let up = '';
     if (tw.level < 2) {
       const c = G.towerCost(tw.type, tw.level + 1);
@@ -307,7 +310,7 @@
       up = `<button id="tp-up" class="primary ${S.gold < c ? 'disabled' : ''}">⬆ 升级 🍂${c} <kbd>U</kbd></button>
         <div class="upinfo">${trapUpgrade(d, st, nx) || `伤害 ${fmt(st.dmg)} → <b>${fmt(nx.dmg)}</b>`}　范围 ${st.range.toFixed(1)} → <b>${nx.range.toFixed(1)}</b>　生命 ${tw.maxHp} → <b>${N.hp}</b>${N.note ? '<br>✨ ' + N.note : ''}</div>`;
     } else up = `<div class="maxed">★ 已满级</div>`;
-    const modes = d.pulse || d.ground ? '' : `<div class="modes">目标：${[['first', '先头'], ['strong', '最强'], ['close', '最近']].map(([k, n]) => `<button data-mode="${k}" class="${tw.mode === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+    const modes = d.pulse || d.ground || d.water ? '' : `<div class="modes">目标：${[['first', '先头'], ['strong', '最强'], ['close', '最近']].map(([k, n]) => `<button data-mode="${k}" class="${tw.mode === k ? 'on' : ''}">${n}</button>`).join('')}</div>`;
     const hpPct = Math.max(0, tw.hp / tw.maxHp * 100);
     const status = [tw.silenceT > 0 ? '<span class="st sil">🔇 噤声</span>' : '', tw.stunT > 0 ? '<span class="st stun">💫 震晕</span>' : '', tw.fogT > 0 ? '<span class="st fog">🌫️ 迷雾 攻速 -40%</span>' : ''].join('');
     const repair = tw.hp < tw.maxHp ? `<button id="tp-repair" class="${S.gold < G.repairCost(tw) ? 'disabled' : ''}">🔧 修理 🍂${G.repairCost(tw)}</button>` : '';
@@ -323,14 +326,18 @@
   };
 
   // 地面陷阱的属性行与升级对比
-  function trapRows(d, st) {
+  function trapRows(d, st, tw) {
     const r = (k, v) => `<div class="row"><b>${k}</b>${v}</div>`;
+    if (d.water && G.TOWERS.lotus === d) return r('月光', `每 ${st.cd.toFixed(0)} 秒为古树恢复 ${st.heal} 点生命`) + r('上限', `古树生命最多恢复到 ${CFG.START_LIVES}`) + (tw && S.phase === 'combat' ? r('下一次', S.lives >= CFG.START_LIVES ? '古树生命已满' : `${Math.ceil(Math.max(0, tw.cd))} 秒后`) : '');
+    if (d.water) return r('修复', `范围内的塔每秒 +${st.regen} 生命`) + r('滋养', `攻击速度 +${fmt(st.haste * 100)}%`) + r('范围', st.range.toFixed(1) + ' 格');
     if (d.trap === 'thorn') return r('每秒伤害', `${fmt(st.dmg / st.cd)} <small>魔法 · 无冷却</small>`) + r('范围', st.range.toFixed(1) + ' 格');
     if (d.trap === 'mire') return r('减速', `${fmt(st.slow * 100)}%　离开后持续 ${st.slowT.toFixed(1)} 秒`) + (st.dmg ? r('腐蚀', `${fmt(st.dmg / st.cd)}/秒`) : '') + r('范围', st.range.toFixed(1) + ' 格');
     if (d.trap === 'lure') return r('混乱', `${st.confuse.toFixed(1)} 秒　最多 ${st.targets} 个`) + r('冷却', `${st.cd.toFixed(1)} 秒`) + r('范围', st.range.toFixed(1) + ' 格');
     return '';
   }
   function trapUpgrade(d, st, nx) {
+    if (G.TOWERS.lotus === d) return `间隔 ${st.cd.toFixed(0)}s → <b>${nx.cd.toFixed(0)}s</b>`;
+    if (G.TOWERS.spring === d) return `修复 ${st.regen}/秒 → <b>${nx.regen}/秒</b>　攻速 +${fmt(st.haste * 100)}% → <b>+${fmt(nx.haste * 100)}%</b>`;
     if (d.trap === 'thorn') return `每秒伤害 ${fmt(st.dmg / st.cd)} → <b>${fmt(nx.dmg / nx.cd)}</b>`;
     if (d.trap === 'mire') return `减速 ${fmt(st.slow * 100)}% → <b>${fmt(nx.slow * 100)}%</b>`;
     if (d.trap === 'lure') return `混乱 ${st.targets} 个 ${st.confuse}s → <b>${nx.targets} 个 ${nx.confuse}s</b>`;
@@ -365,7 +372,7 @@
     if (key.startsWith('tip:tower:')) {
       const type = key.slice(10), d = G.TOWERS[type];
       const st = G.towerStats(type, 0, 1, false);
-      if (d.ground) return `<h4>${d.icon} ${d.name} <kbd>${d.key}</kbd> <small class="okind trap">地面陷阱</small></h4><p>${d.desc}</p><div class="tiprows">${trapRows(d, st)}</div><p class="dim">建造 🍂${G.towerCost(type, 0)}　·　只能放在平地上　·　生命 ${st.hp}</p>`;
+      if (d.ground || d.water) return `<h4>${d.icon} ${d.name} <kbd>${d.key}</kbd> <small class="okind ${d.water ? 'water' : 'trap'}">${d.water ? '水生植物' : '地面陷阱'}</small></h4><p>${d.desc}</p><div class="tiprows">${trapRows(d, st)}</div><p class="dim">建造 🍂${G.towerCost(type, 0)}　·　${d.water ? '只能种在水面上' : '只能放在平地上'}　·　生命 ${st.hp}</p>`;
       const extra = [st.slow ? `减速 <b>${fmt(st.slow * 100)}%</b>` : '', st.freeze ? `冰冻 <b>${st.freeze.toFixed(1)}</b> 秒` : ''].filter(Boolean).join('　');
       return `<h4>${d.icon} ${d.name} <kbd>${d.key}</kbd></h4><p>${d.desc}</p>
         <p>伤害 <b>${fmt(st.dmg)}</b>（${d.dmgType === 'magic' ? '魔法' : '物理'}）　${d.pulse ? '频率' : '攻速'} <b>${(1 / st.cd).toFixed(2)}</b>/秒　射程 <b>${st.range.toFixed(1)}</b>　对空 ${d.air ? '✔' : '✘'}${extra ? '<br>' + extra : ''}</p>
@@ -691,9 +698,10 @@
       g.visible = true;
       g.position.set(t.wx, Wd.top(t), t.wz);
       setGhostMat(g, !err);
-      const st = G.towerStats(type, 0, G.TOWERS[type].ground ? 1 : Math.max(1, t.h), false);
+      const st = G.towerStats(type, 0, G.TOWERS[type].ground || G.TOWERS[type].water ? 1 : Math.max(1, t.h), false);
       showRange(t.wx, t.wz, st.range, st.minRange, err ? 0xff8080 : 0xfff4c0);
-      wtip = err ? `<span class="bad">${err}</span>` : G.TOWERS[type].ground ? `${G.TOWERS[type].name}　范围 ${st.range.toFixed(1)}${t.onPath ? '<br><b class="good">在敌人路线上</b>' : '<br><span class="dim">不在路线上：只有路过范围内的敌人才会受影响</span>'}<br><span class="dim">Shift+点击 连续建造</span>`
+      wtip = err ? `<span class="bad">${err}</span>` : G.TOWERS[type].water ? `${G.TOWERS[type].name}<br><span class="dim">Shift+点击 连续建造</span>`
+        : G.TOWERS[type].ground ? `${G.TOWERS[type].name}　范围 ${st.range.toFixed(1)}${t.onPath ? '<br><b class="good">在敌人路线上</b>' : '<br><span class="dim">不在路线上：只有路过范围内的敌人才会受影响</span>'}<br><span class="dim">Shift+点击 连续建造</span>`
         : `${G.TOWERS[type].name}　射程 ${st.range.toFixed(1)}　伤害 ${fmt(st.dmg)}${t.h >= 2 ? `<br><b class="good">高地加成 +${fmt((st.dM - 1) * 100)}% 伤害</b>` : ''}<br><span class="dim">Shift+点击 连续建造</span>`;
     } else if (h && tool && tool.startsWith('piece:')) {
       const id = S.hand[+tool.slice(6)];

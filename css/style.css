@@ -585,3 +585,8 @@ body.on-title #omen-veils, body.on-title #omen-reveal { display: none !important
 .tiprows .row { display: flex; gap: 8px; font-size: 13px; } .tiprows .row b { color: var(--dim); font-weight: normal; min-width: 56px; }
 .ftext.breaktxt { color: #ffe08a; font-size: 12px; }
 .ftext.confusetxt { color: #ff9ad8; font-size: 13px; text-shadow: 0 0 8px #a03d8a, 0 1px 2px #000; }
+
+#build-bar .tool.water { background: linear-gradient(180deg, rgba(80, 170, 220, 0.2), rgba(30, 24, 52, 0.0)); }
+.hb-tag.water { background: rgba(110, 200, 255, 0.15); color: #bfeaff; }
+.okind.water { background: rgba(110, 200, 255, 0.2); color: #bfeaff; padding: 1px 6px; border-radius: 6px; font-size: 11px; }
+.ftext.healtxt { color: #9fffc0; font-size: 22px; text-shadow: 0 0 10px #2a9a5a, 0 1px 3px #000; }
