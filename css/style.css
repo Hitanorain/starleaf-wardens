@@ -653,3 +653,16 @@ body.on-title #hud-ctrl, body.on-title #side { display: none !important; }
   #side { width: 236px; }
 }
 .stats .row.wide { grid-column: 1 / -1; }
+
+/* =================== 宽屏友好：视觉安全框 + 状态条居中（2026-10-16） =================== */
+/* 屏幕超过 1680 宽时，所有界面元素向中间收拢，不再贴着最边缘；普通屏幕不受影响 */
+:root { --fx: max(14px, calc((100vw - 1680px) / 2)); }
+#hud-top { left: 50%; transform: translateX(-50%); }           /* 状态条：顶部正中 */
+#hud-ctrl { right: var(--fx); }
+#side { right: var(--fx); }
+#guide { left: calc(var(--fx) + 12px); top: 18px; }
+#region-panel { left: var(--fx); }
+#toasts { top: 64px; }
+/* 露娜紧挨着建造栏，技能和建造按钮在同一处 */
+#dock { left: var(--fx); right: var(--fx); gap: 10px; align-items: flex-end; }
+#hero-panel { position: static; }
