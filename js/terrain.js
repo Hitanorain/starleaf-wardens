@@ -639,7 +639,7 @@
     for (const it of T.items) {
       const t = it.tile;
       let show = true, y = 0;
-      if (it.layer === 'ground') { show = t.locked || (t.h === 0 && t.type !== 'water' && (!t.onPath || it.onPath)); if (t.locked) y = -0.13; }
+      if (it.layer === 'ground') { show = t.locked || (t.h === 0 && t.type !== 'water' && !t.tower && (!t.onPath || it.onPath)); if (t.locked) y = -0.13; }
       else if (it.layer === 'top') { show = t.h > 0 && !t.tower; y = t.h * STEP; }
       else y = groundAt(it.x, it.z);
       v.set(it.x, y, it.z);

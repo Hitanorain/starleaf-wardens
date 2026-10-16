@@ -20,8 +20,8 @@
       hand: [], expandTokens: 0, offers: null, rng: Math.random,
       omens: [], om: Object.assign({}, G.OMEN_DEFAULT), purged: false, seenOmen: false, lastOmens: [], boltT: 0,
       mods: {
-        dmg: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1 },
-        range: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1 },
+        dmg: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1, mire: 1, lure: 1 },
+        range: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1, mire: 1, lure: 1 },
         rate: 1, heightMul: 1, cost: 1, sell: CFG.SELL_RATE, killGold: 1, leyBonus: 0, splash: 1, heroDmg: 1, heroCd: 1,
       },
     });
@@ -75,6 +75,7 @@
       this.silT = d.silence ? d.silence.every * (0.3 + Math.random() * 0.7) : 0;
       this.slamT = d.slam ? d.slam.every * 0.6 : 0;
       this.frozenT = 0; this.thawT = 0; this.chillT = 0; this.brittleT = 0; this.brittle = 0;
+      this.slowChain = 0; this.slowImmT = 0; this.confuseT = 0; this.confuseImmT = 0;
       this.dmgAcc = 0; this.dmgT = 0;
       this.baseEm = G.OmenFX.enemyTint();   // 天象给敌人身体染上的颜色
       for (const m of this.m.mats) m.emissive.copy(this.baseEm);
@@ -89,7 +90,7 @@
       if (!this.fly) this.chooseNext();
     }
     chooseNext() {
-      const n = Wd.nextStep(Wd.dist, this.tile.x, this.tile.y);
+      const n = this.confuseT > 0 ? backStep(this.tile) : Wd.nextStep(Wd.dist, this.tile.x, this.tile.y);
       this.next = n;
       if (n) {
         const isHeart = n.x === Wd.heart.x && n.y === Wd.heart.y;
@@ -140,7 +141,23 @@
         }
       }
       if (this.stunT > 0) { this.stunT -= dt; this.vel.set(0, 0, 0); this.place(dt); return; }
-      if (this.slowT > 0) this.slowT -= dt;
+      // 减速有上限：连续减速超过 SLOW_CAP 秒就挣脱，之后一小段时间不吃减速
+      if (this.slowImmT > 0) this.slowImmT -= dt;
+      if (this.slowT > 0) {
+        this.slowT -= dt; this.slowChain += dt;
+        if (this.slowChain >= CFG.SLOW_CAP) {
+          this.slowT = 0; this.slowImmT = CFG.SLOW_IMMUNE;
+          if (S.time - (G.lastBreakTxt || -9) > 0.6) { G.lastBreakTxt = S.time; FX.text(this.aimPoint().add(V().set(0, 0.35, 0)), '挣脱', 'breaktxt', 0.7); }
+          FX.emit(this.aimPoint(), 4, 0xffe08a, 1, 0.3, 0.6, 2);
+        }
+      } else this.slowChain = 0;
+      // 混乱：掉头往回走，结束后重新朝古树前进
+      if (this.confuseImmT > 0) this.confuseImmT -= dt;
+      if (this.confuseT > 0) {
+        this.confuseT -= dt;
+        if (Math.random() < dt * 8) FX.emit(this.aimPoint().add(V().set(0, 0.3, 0)), 1, Math.random() < 0.5 ? 0xff8fd8 : 0xc9a0ff, 0.5, 0.5, 0.3, 0, 0.15, 1.8);
+        if (this.confuseT <= 0) { this.confuseImmT = CFG.CONFUSE_IMMUNE; if (!this.fly) this.chooseNext(); }
+      }
       const sp = this.speed * (this.slowT > 0 ? 1 - this.slowAmt : 1) * dt;
       const ox = this.pos.x, oz = this.pos.z;
       if (this.fly) {
@@ -167,6 +184,21 @@
       }
       if (dt > 0) this.vel.set((this.pos.x - ox) / dt, 0, (this.pos.z - oz) / dt);
       this.place(dt);
+    }
+    // 减速（所有减速都走这里，受挣脱规则限制）
+    applySlow(amt, dur) {
+      if (this.dead || this.slowImmT > 0 || amt <= 0) return false;
+      this.slowAmt = this.slowT > 0 ? Math.max(this.slowAmt, amt) : amt;
+      this.slowT = Math.max(this.slowT, dur);
+      return true;
+    }
+    // 混乱：Boss 免疫；刚清醒的敌人短时间内免疫
+    confuse(dur) {
+      if (this.dead || this.fly || this.def.boss || this.confuseImmT > 0 || this.confuseT > 0) return false;
+      this.confuseT = dur;
+      if (this.tile) { const b = backStep(this.tile); if (b) { this.next = b; this.tx = b.wx + this.off.x; this.tz = b.wz + this.off.z; } }
+      FX.text(this.aimPoint().add(V().set(0, 0.35, 0)), '混乱', 'confusetxt', 0.8);
+      return true;
     }
     // 精英怪（无尽模式）：体型更大、生命 ×3、护甲 +10%，身上一圈金色光环，击杀金叶 ×3
     makeElite() {
@@ -330,6 +362,17 @@
   G.goldMulAt = w => S.endless ? G.Endless.goldMul(w) : G.goldMul(w);
   G.bossHpMul = w => S.endless ? G.Endless.bossMul(w) : 1;
   G.waveGroups = n => S.endless ? G.Endless.groups(n) : G.WAVES[n - 1];
+  // 混乱时往回走：去往离古树更远的相邻格（只走上下左右，避免穿角）
+  function backStep(t) {
+    let best = null, bv = Wd.dist[t.y * CFG.W + t.x];
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const n = Wd.get(t.x + dx, t.y + dy);
+      if (!Wd.walk(n)) continue;
+      const v = Wd.dist[n.y * CFG.W + n.x];
+      if (isFinite(v) && v > bv) { bv = v; best = n; }
+    }
+    return best;
+  }
   function nearestTower(p, range) {
     let best = null, bd = range;
     for (const t of S.towers) { const d = hyp(t.pos.x, t.pos.z, p.x, p.z); if (d < bd) { bd = d; best = t; } }
@@ -374,6 +417,7 @@
       cd: L.cd / (S.mods.rate * om.rate * (buff ? 1 + G.HERO.skills.e.haste : 1)),
       splash: (L.splash || 0) * S.mods.splash, minRange: L.minRange || 0, slow: L.slow || 0,
       slowT: L.slowT || 1.2, freeze: L.freeze || 0, freezeAoe: L.freezeAoe || 0, brittle: L.brittle || 0,
+      confuse: L.confuse || 0, targets: L.targets || 0,
       hp: L.hp, armor: L.armor || 0,
       multi: L.multi || 1, chain: L.chain || 0, rM, dM,
     };
@@ -497,6 +541,7 @@
         this.kick -= dt;
         if (this.m.vines) { const s = 1 + Math.max(0, this.kick) * 1.2; this.m.vines.scale.set(s, 1 + Math.max(0, this.kick) * 2, s); }
       }
+      if (this.m.bloom) this.m.bloom.scale.setScalar((this.level === 2 ? 1.25 : this.level ? 1.1 : 1) * (1 + Math.max(0, this.kick) * 0.6));
       if (this.m.arm) this.m.arm.rotation.x += ((this.kick > 0 ? -1.2 : 0.5) - this.m.arm.rotation.x) * Math.min(1, dt * (this.kick > 0 ? 25 : 3));
 
       // 干扰状态的表现
@@ -526,30 +571,13 @@
         FX.emit(this.muzzle(), 6 + this.level * 5, 0xdff6ff, 1.2, 0.7, 0.3, 0.5, 0.2, 1.6);
         hit.forEach((e, i) => {
           G.damage(e, st.dmg, 'magic');
-          e.slowAmt = Math.max(e.slowT > 0 ? e.slowAmt : 0, st.slow); e.slowT = Math.max(e.slowT, st.slowT);
-          e.chillT = st.slowT;
+          if (e.applySlow(st.slow, st.slowT)) e.chillT = st.slowT;
           if (st.brittle) { e.brittle = st.brittle; e.brittleT = st.slowT; }
           if (i < 10) FX.emit(e.aimPoint(), 3, 0xcff4ff, 0.8, 0.5, 0.4, 0.5, 0.15, 1.6);   // 雪花
         });
         return;
       }
-      if (this.def.pulse) {
-        if (this.cd > 0) return;
-        const hit = this.targets(st, 99);
-        if (!hit.length) return;
-        this.cd = st.cd; this.kick = 0.25;
-        A.play('thorn', 0.1);
-        const top = Wd.top(this.tile);
-        FX.ring(this.pos, [0x7fe07a, 0x9fe86a, 0xff8fc8][this.level], 0.2, st.range, 0.4 + this.level * 0.1, 0.07, 0.6);
-        if (this.level >= 1) FX.emit(V().set(this.pos.x, top + 0.6, this.pos.z), 6 + this.level * 8, this.level === 2 ? 0xffb3d6 : 0xc8ff9a, 1.8, 0.8, 0.6, -0.3, 0.3, 1.3);
-        if (this.level === 2) { FX.ring(this.pos, 0xfff27a, 0.1, st.range * 0.6, 0.35, 0.09, 0.5); FX.flash(V().set(this.pos.x, top + 0.85, this.pos.z), 0xff8fc8, 0.9, 0.2); }
-        hit.forEach((e, i) => {
-          G.damage(e, st.dmg, 'magic');
-          e.slowAmt = Math.max(e.slowT > 0 ? e.slowAmt : 0, st.slow); e.slowT = 1.2;
-          if (i < 6) FX.spikes(e.pos, this.level);
-        });
-        return;
-      }
+      if (this.def.trap) { this.trapUpdate(dt, st); return; }
       const tg = this.targets(st, st.multi);
       if (!tg.length) return;
       if (this.m.head) {
@@ -593,6 +621,54 @@
         const to = e.pos.clone().addScaledVector(e.vel, T * 0.9);
         to.y = 0;
         S.projectiles.push(new Proj('rock', from, null, { dmg: st.dmg, splash: st.splash, to, T, level: this.level }));
+      }
+    }
+    // 地面陷阱：范围内的地面敌人
+    inTrap(st) {
+      const out = [];
+      for (const e of S.enemies) if (!e.dead && !e.fly && hyp(e.pos.x, e.pos.z, this.pos.x, this.pos.z) <= st.range) out.push(e);
+      return out;
+    }
+    trapUpdate(dt, st) {
+      const kind = this.def.trap, hit = this.inTrap(st);
+      this.fxT = (this.fxT || 0) - dt;
+      if (kind === 'thorn') {
+        // 荆棘丛：没有冷却，按每秒伤害持续刺伤（攻速加成 / 迷雾减速都会影响每秒伤害）
+        if (!hit.length) return;
+        const dps = st.dmg / st.cd;
+        for (const e of hit) G.damage(e, dps * dt, 'magic');
+        this.kick = 0.2;
+        if (this.fxT <= 0) {
+          this.fxT = 0.35;
+          for (const e of hit.slice(0, 3)) FX.spikes(e.pos, this.level);
+          A.play('thorn', 0.15);
+        }
+      } else if (kind === 'mire') {
+        // 泥沼藤网：踩进来就减速（离开后还持续 slowT 秒），3 级附带少量伤害
+        for (const e of hit) {
+          e.applySlow(st.slow, st.slowT);
+          if (st.dmg) G.damage(e, st.dmg / st.cd * dt, 'magic');
+        }
+        if (this.fxT <= 0) {
+          this.fxT = hit.length ? 0.15 : 0.6;
+          const a = Math.random() * Math.PI * 2, r = Math.random() * st.range * 0.8;
+          FX.emit(V().set(this.pos.x + Math.cos(a) * r, 0.08, this.pos.z + Math.sin(a) * r), hit.length ? 3 : 1, [0x7fae5a, 0x9ac46a, 0xb07cff][this.level], 0.2, 0.7, 0.4, 0.2, 0.05, 1.0);
+          if (hit.length) A.play('mire', 0.4);
+        }
+      } else if (kind === 'lure') {
+        // 迷魂花阵：有敌人靠近就喷花粉，迷惑最近的几个，然后冷却
+        if (this.cd > 0 || !hit.length) return;
+        hit.sort((a, b) => hyp(a.pos.x, a.pos.z, this.pos.x, this.pos.z) - hyp(b.pos.x, b.pos.z, this.pos.x, this.pos.z));
+        let n = 0;
+        for (const e of hit) { if (n >= st.targets) break; if (e.confuse(st.confuse)) n++; }
+        if (!n) return;
+        this.cd = st.cd; this.kick = 0.5;
+        A.play('lure', 0.2);
+        const c = V().set(this.pos.x, 0, this.pos.z);
+        FX.softRing(c, 0xff8fd8, 0.2, st.range * 1.1, 0.8, 0.08, 0.6, 'ring', 1.4);
+        FX.softRing(c, 0xd8a0ff, 0.2, st.range * 0.8, 1.0, 0.07, 0.25, 'disc', 1.1);
+        FX.emit(V().set(this.pos.x, 0.5, this.pos.z), 30 + this.level * 15, 0xffb0e8, 1.6, 1.0, 0.6, -0.3, 0.3, 1.6);
+        FX.emit(V().set(this.pos.x, 0.5, this.pos.z), 15, 0xd8b0ff, 1.2, 1.2, 0.8, -0.3, 0.3, 1.6);
       }
     }
     remove() {
@@ -1149,8 +1225,13 @@
     if (!t) return '无效位置';
     if (t.locked) return '这里还没有开拓';
     if (t.tower) return '这里已经有塔了';
-    if (t.type !== 'grass' && t.type !== 'rock') return '这里不能建塔';
-    if (t.h < 1) return '塔只能建在高地上（先用地形块把地抬高）';
+    if (G.TOWERS[type].ground) {
+      if (t.type !== 'grass' || t.h !== 0) return '陷阱只能放在平地上（可以放在敌人路线上）';
+      if (t.fixed) return '不能放在传送门或古树上';
+    } else {
+      if (t.type !== 'grass' && t.type !== 'rock') return '这里不能建塔';
+      if (t.h < 1) return '塔只能建在高地上（先用地形块把地抬高）';
+    }
     if (S.gold < G.towerCost(type, 0)) return '金叶不足';
     return null;
   };

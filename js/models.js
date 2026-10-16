@@ -804,6 +804,91 @@
         ring.castShadow = false; spin(ring, 1.3, 'x');
       }
       r.muzzle.position.set(0, top + 0.12, 0); g.add(r.muzzle);
+    } else if (type === 'mire') {
+      // 泥沼藤网：一摊冒泡的泥沼，边上缠着藤网；高级时长出发光蘑菇与沼泽睡莲
+      const mud = M.mat(level === 2 ? 0x4a3a5a : 0x4a4030, { shininess: 60, specular: 0x333322 });
+      const rim = M.mat(level === 2 ? 0x5a4a6a : 0x5c5038);
+      const R = [0.36, 0.42, 0.46][level];
+      part(g, GEO.cyl12, rim, [0, 0.015, 0], [R + 0.05, 0.03, R + 0.05]);
+      const pool = part(g, GEO.cyl12, mud, [0, 0.03, 0], [R, 0.025, R]);
+      pool.castShadow = false;
+      // 表面的泥浆光泽
+      part(g, GEO.cyl12, M.glow(level === 2 ? 0x9a6aff : 0x8aa05a, 0.25, true, 1.0), [0.05, 0.045, -0.04], [R * 0.6, 0.005, R * 0.45]).castShadow = false;
+      // 冒泡（会上下浮动）
+      const bubC = level === 2 ? 0xc0a0ff : 0xa8c070;
+      for (let i = 0; i < 3 + level * 2; i++) {
+        const a = i * 2.4, r0 = R * (0.2 + (i % 3) * 0.25);
+        bob(part(g, GEO.sphere, M.glow(bubC, 0.7, false, 1.2), [Math.cos(a) * r0, 0.05, Math.sin(a) * r0], 0.025 + (i % 2) * 0.015), 0.02, 2 + i * 0.7, i);
+      }
+      // 藤网：几道拱起的藤蔓
+      const vine = M.mat(0x4f7a3a);
+      for (let i = 0; i < 2 + level; i++) {
+        const a = i / (2 + level) * Math.PI;
+        const arc = part(g, new THREE.TorusGeometry(R * 0.85, 0.018, 4, 12, Math.PI), vine, [0, 0.03, 0], 1, [0, a, 0]);
+        arc.scale.set(1, 0.35, 1);
+      }
+      if (level >= 1) {   // 发光蘑菇
+        for (let i = 0; i < 3; i++) {
+          const a = i * 2.1 + 0.6, x = Math.cos(a) * (R + 0.04), z = Math.sin(a) * (R + 0.04);
+          part(g, GEO.cyl6, M.mat(0xe8e0c8), [x, 0.06, z], [0.012, 0.1, 0.012]);
+          part(g, GEO.sphere, M.glow(level === 2 ? 0xd08fff : 0x9fe86a, 1, false, 1.6), [x, 0.11, z], [0.04, 0.022, 0.04]).castShadow = false;
+        }
+      }
+      if (level === 2) {  // 沼泽睡莲 + 雾环
+        for (let i = 0; i < 2; i++) {
+          const a = i * 3 + 1;
+          const lily = new THREE.Group(); lily.position.set(Math.cos(a) * R * 0.5, 0.05, Math.sin(a) * R * 0.5); g.add(lily);
+          for (let k = 0; k < 6; k++) part(lily, GEO.sphere, M.mat(0xe8c8ff, { emissive: 0x8a4dff, emissiveIntensity: 0.4 }), [Math.cos(k) * 0.04, 0.01, Math.sin(k) * 0.04], [0.035, 0.012, 0.018], [0, -k, 0.4]);
+          part(lily, GEO.sphere, M.glow(0xfff0a0, 1, false, 2), [0, 0.02, 0], 0.015).castShadow = false;
+        }
+        const mist = part(g, new THREE.RingGeometry(R * 0.9, R * 1.25, 32), M.glow(0xb07cff, 0.18, true, 1.0), [0, 0.06, 0], 1, [-Math.PI / 2, 0, 0]);
+        mist.castShadow = false; spin(mist, 0.4, 'z');
+      }
+      r.muzzle.position.set(0, 0.1, 0); g.add(r.muzzle);
+
+    } else if (type === 'lure') {
+      // 迷魂花阵：巨大的发光花朵，花心吐出花粉，几只蝴蝶绕着飞
+      const leaf = M.mat(0x5a9a4a), stem = M.mat(0x4a8a3a);
+      part(g, GEO.ico0, M.mat(0x3f6a34), [0, 0.03, 0], [0.32, 0.06, 0.32]);
+      for (let i = 0; i < 5; i++) {
+        const a = i / 5 * Math.PI * 2;
+        part(g, GEO.sphere, leaf, [Math.cos(a) * 0.2, 0.05, Math.sin(a) * 0.2], [0.13, 0.02, 0.06], [0, -a, 0.2]);
+      }
+      const petalC = [0xff9ad8, 0xf08fff, 0xc89aff][level];
+      const flowerAt = (x, z, h, sc) => {
+        part(g, GEO.cyl6, stem, [x, h / 2, z], [0.032, h, 0.032]);
+        const f = new THREE.Group(); f.position.set(x, h, z); f.scale.setScalar(sc); g.add(f);
+        for (let k = 0; k < 6; k++) {
+          const a = k / 6 * Math.PI * 2;
+          part(f, GEO.sphere, M.mat(petalC, { emissive: petalC, emissiveIntensity: 0.35 }), [Math.cos(a) * 0.1, 0, Math.sin(a) * 0.1], [0.1, 0.025, 0.055], [0, -a, 0.45]);
+        }
+        for (let k = 0; k < 5; k++) {
+          const a = k / 5 * Math.PI * 2 + 0.3;
+          part(f, GEO.sphere, M.mat(0xffe0f4, { emissive: 0xff8fd8, emissiveIntensity: 0.3 }), [Math.cos(a) * 0.05, 0.03, Math.sin(a) * 0.05], [0.06, 0.02, 0.035], [0, -a, 0.7]);
+        }
+        part(f, GEO.sphere, M.glow(0xfff2a0, 1, false, 2.2), [0, 0.04, 0], 0.035).castShadow = false;
+        return f;
+      };
+      const main = flowerAt(0, 0, [0.28, 0.32, 0.36][level], [1, 1.1, 1.25][level]);
+      spin(main, 0.5);
+      r.bloom = main;
+      if (level >= 1) { flowerAt(0.17, 0.08, 0.17, 0.6); flowerAt(-0.14, -0.12, 0.14, 0.55); }
+      if (level === 2) flowerAt(-0.05, 0.19, 0.15, 0.5);
+      // 绕飞的蝴蝶
+      const flock = new THREE.Group(); flock.position.y = [0.36, 0.42, 0.48][level]; g.add(flock);
+      const wingM = M.glow(level === 2 ? 0xd8b0ff : 0xffc0ea, 0.9, false, 1.5);
+      for (let i = 0; i < 2 + level; i++) {
+        const a = i / (2 + level) * Math.PI * 2, b = new THREE.Group();
+        b.position.set(Math.cos(a) * 0.3, (i % 2) * 0.08, Math.sin(a) * 0.3); flock.add(b);
+        for (const sx of [1, -1]) part(b, GEO.sphere, wingM, [sx * 0.025, 0, 0], [0.03, 0.005, 0.022], [0, 0, sx * 0.5]).castShadow = false;
+        bob(b, 0.04, 3 + i, i);
+      }
+      spin(flock, -1.1);
+      if (level === 2) {
+        const ring = part(g, new THREE.RingGeometry(0.34, 0.4, 32), M.glow(0xff9ad8, 0.5, true, 1.4), [0, 0.04, 0], 1, [-Math.PI / 2, 0, 0]);
+        ring.castShadow = false; spin(ring, 0.6, 'z');
+      }
+      r.muzzle.position.set(0, 0.45, 0); g.add(r.muzzle);
     }
     // 等级标记：金色小宝石
     for (let i = 0; i <= level; i++) {

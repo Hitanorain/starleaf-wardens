@@ -26,7 +26,10 @@ G.CFG = {
   SELL_RATE: 0.7,
   // 兵量：每组普通敌人数量 ×3（特殊兵种可用 countMul 再乘一个系数，例如投石地精只 ×1.5）；为了平衡，单个敌人的生命与金叶相应降低，出怪间隔变密
   COUNT_MUL: 3, ENEMY_HP: 0.5, ENEMY_GOLD: 0.5, INTERVAL_MUL: 0.45,
-  TOWER_HEAL: 0.35,      // 每波结束，塔自动恢复 35% 最大生命
+  TOWER_HEAL: 0.35,
+  SLOW_CAP: 4,           // 敌人被连续减速超过这么多秒就会挣脱
+  SLOW_IMMUNE: 1.5,      // 挣脱后这么多秒内不吃减速
+  CONFUSE_IMMUNE: 2,     // 混乱结束后的免疫时间      // 每波结束，塔自动恢复 35% 最大生命
   REPAIR_RATE: 0.6,      // 修理费用：缺失生命比例 × 已投入金叶 × 0.6
 };
 
@@ -60,17 +63,8 @@ G.TOWERS = {
       { hp: 240, armor: 0.25, cost: 150, dmg: 72, cd: 1.1, range: 3.4, chain: 2, note: '星光会弹射 2 个额外目标' },
     ],
   },
-  thorn: {
-    name: '荆棘藤蔓', key: '3', icon: '🌿', dmgType: 'magic', air: false, pulse: true,
-    desc: '周期性地刺出荆棘，伤害并减速范围内所有地面敌人。',
-    levels: [
-      { hp: 160, armor: 0.2, cost: 60,  dmg: 6,  cd: 1.0, range: 2.0, slow: 0.35 },
-      { hp: 220, armor: 0.25, cost: 70,  dmg: 11, cd: 1.0, range: 2.2, slow: 0.45 },
-      { hp: 300, armor: 0.3, cost: 120, dmg: 18, cd: 0.9, range: 2.4, slow: 0.55, note: '减速 55%' },
-    ],
-  },
   catapult: {
-    name: '水晶投石机', key: '4', icon: '💎', dmgType: 'phys', air: false,
+    name: '水晶投石机', key: '3', icon: '💎', dmgType: 'phys', air: false,
     desc: '远程抛射魔晶，落地爆炸造成范围物理伤害。不能攻击飞行单位，脚下有盲区。',
     levels: [
       { hp: 140, armor: 0.2, cost: 110, dmg: 40,  cd: 2.4, range: 4.2, splash: 1.1, minRange: 1.2 },
@@ -79,7 +73,7 @@ G.TOWERS = {
     ],
   },
   chime: {
-    name: '霜铃塔', key: '5', icon: '🔔', dmgType: 'magic', air: true, pulse: true, frost: true,
+    name: '霜铃塔', key: '4', icon: '🔔', dmgType: 'magic', air: true, pulse: true, frost: true,
     desc: '水晶拱门下悬着一口冰铃，每次摇响都放出一圈寒霜涟漪：范围内所有敌人（包括飞行单位）大幅减速，并受到少量魔法伤害。',
     levels: [
       { hp: 120, armor: 0.1,  cost: 70,  dmg: 4,  cd: 1.3, range: 2.3, slow: 0.4,  slowT: 2.0 },
@@ -88,12 +82,40 @@ G.TOWERS = {
     ],
   },
   frost: {
-    name: '凛冬尖碑', key: '6', icon: '🧊', dmgType: 'magic', air: false,
+    name: '凛冬尖碑', key: '5', icon: '🧊', dmgType: 'magic', air: false,
     desc: '投出冰枪，把命中的敌人冻成冰块，一段时间内无法移动。Boss 只会被冻住很短的时间；刚解冻的敌人短时间内不会再被冻住。',
     levels: [
       { hp: 130, armor: 0.15, cost: 100, dmg: 18, cd: 2.6, range: 3.0, freeze: 1.1 },
       { hp: 180, armor: 0.2,  cost: 110, dmg: 32, cd: 2.4, range: 3.2, freeze: 1.5 },
       { hp: 240, armor: 0.25, cost: 170, dmg: 50, cd: 2.2, range: 3.4, freeze: 1.9, freezeAoe: 1.0, note: '冰爆：同时冻住周围 1 格内的敌人' },
+    ],
+  },
+  // ---------- 地面陷阱：只能放在平地上（可以直接放在敌人路线上，不挡路），只影响地面敌人 ----------
+  thorn: {
+    name: '荆棘丛', key: '6', icon: '🌿', dmgType: 'magic', air: false, ground: true, trap: 'thorn',
+    desc: '种在平地上的尖刺荆棘。敌人踩进范围就会被持续刺伤（没有冷却，按每秒伤害计算），可以直接种在敌人路线上。',
+    levels: [
+      { hp: 150, armor: 0.2,  cost: 60,  dmg: 12, cd: 1, range: 0.8 },
+      { hp: 210, armor: 0.25, cost: 70,  dmg: 22, cd: 1, range: 0.9 },
+      { hp: 290, armor: 0.3,  cost: 120, dmg: 36, cd: 1, range: 1.05, note: '荆棘蔓延得更远' },
+    ],
+  },
+  mire: {
+    name: '泥沼藤网', key: '7', icon: '🫧', dmgType: 'magic', air: false, ground: true, trap: 'mire',
+    desc: '黏稠的泥沼与缠人的藤网：踩进去的地面敌人大幅减速，离开后减速还会持续一会儿。注意：敌人被连续减速太久会挣脱。',
+    levels: [
+      { hp: 140, armor: 0.15, cost: 50,  dmg: 0, cd: 1, range: 1.0, slow: 0.45, slowT: 1.8 },
+      { hp: 190, armor: 0.2,  cost: 60,  dmg: 0, cd: 1, range: 1.2, slow: 0.55, slowT: 2.2 },
+      { hp: 260, armor: 0.25, cost: 100, dmg: 6, cd: 1, range: 1.4, slow: 0.65, slowT: 2.6, note: '腐蚀泥浆：每秒造成少量伤害' },
+    ],
+  },
+  lure: {
+    name: '迷魂花阵', key: '8', icon: '🌸', dmgType: 'magic', air: false, ground: true, trap: 'lure',
+    desc: '巨大的迷魂花。敌人靠近时喷出花粉，让附近几个地面敌人陷入混乱、掉头往回走；之后需要冷却。Boss 不受混乱影响。',
+    levels: [
+      { hp: 130, armor: 0.1,  cost: 80,  dmg: 0, cd: 6.0, range: 1.3, confuse: 2.0, targets: 2 },
+      { hp: 180, armor: 0.15, cost: 90,  dmg: 0, cd: 5.5, range: 1.5, confuse: 2.5, targets: 3 },
+      { hp: 240, armor: 0.2,  cost: 140, dmg: 0, cd: 5.0, range: 1.7, confuse: 3.0, targets: 5, note: '一次迷惑 5 个敌人' },
     ],
   },
 };
@@ -236,7 +258,7 @@ G.BLESSINGS = [
   { id: 'heart',   icon: '💚', name: '古树之心', repeat: true, desc: '月光古树恢复 5 点生命。',            apply: s => { s.lives += 5; } },
   { id: 'hawk',    icon: '🦅', name: '鹰眼',     desc: '弓手塔射程 +20%，伤害 +15%。',                     apply: s => { s.mods.range.archer *= 1.2; s.mods.dmg.archer *= 1.15; } },
   { id: 'starres', icon: '✨', name: '星辉共鸣', desc: '方尖碑伤害 +30%。',                               apply: s => { s.mods.dmg.obelisk *= 1.3; } },
-  { id: 'venom',   icon: '🥀', name: '剧毒荆棘', desc: '荆棘藤伤害 ×2，范围 +15%。',                      apply: s => { s.mods.dmg.thorn *= 2; s.mods.range.thorn *= 1.15; } },
+  { id: 'venom',   icon: '🥀', name: '剧毒荆棘', desc: '荆棘丛伤害 ×2，范围 +15%。',                      apply: s => { s.mods.dmg.thorn *= 2; s.mods.range.thorn *= 1.15; } },
   { id: 'shatter', icon: '💥', name: '碎晶冲击', desc: '投石机爆炸范围 +35%，伤害 +15%。',                 apply: s => { s.mods.splash *= 1.35; s.mods.dmg.catapult *= 1.15; } },
   { id: 'peak',    icon: '⛰️', name: '高山之息', desc: '地势加成翻倍：高地上的塔获得双倍射程与伤害加成。', apply: s => { s.mods.heightMul *= 2; } },
   { id: 'song',    icon: '🎶', name: '露娜之歌', desc: '露娜伤害 +50%，技能冷却 -25%。',                  apply: s => { s.mods.heroDmg *= 1.5; s.mods.heroCd *= 0.75; } },

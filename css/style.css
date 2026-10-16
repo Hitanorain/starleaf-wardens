@@ -577,3 +577,11 @@ body.on-title #omen-veils, body.on-title #omen-reveal { display: none !important
 .wp-title .tag.boss { background: rgba(255, 79, 216, 0.25); color: #ffc8f4; }
 .hb.elite { box-shadow: 0 0 0 1px #ffd76a, 0 0 6px rgba(255, 215, 106, 0.8); }
 #end-sub .good { color: var(--gold); }
+
+/* ---------- 地面陷阱 ---------- */
+#build-bar .tool.trap { background: linear-gradient(180deg, rgba(90, 140, 70, 0.18), rgba(30, 24, 52, 0.0)); }
+.hb-tag.trap { background: rgba(140, 200, 110, 0.15); color: #c8f0a8; }
+.okind.trap { background: rgba(140, 200, 110, 0.2); color: #c8f0a8; padding: 1px 6px; border-radius: 6px; font-size: 11px; }
+.tiprows .row { display: flex; gap: 8px; font-size: 13px; } .tiprows .row b { color: var(--dim); font-weight: normal; min-width: 56px; }
+.ftext.breaktxt { color: #ffe08a; font-size: 12px; }
+.ftext.confusetxt { color: #ff9ad8; font-size: 13px; text-shadow: 0 0 8px #a03d8a, 0 1px 2px #000; }

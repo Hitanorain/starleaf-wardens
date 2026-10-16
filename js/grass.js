@@ -205,7 +205,7 @@
       const i = (t.y * W + t.x) * 4, grassy = t.type === 'grass' || t.type === 'tree';
       const flat = t.vh < 0.05;
       tileData[i] = t.locked ? -0.13 : 0;
-      tileData[i + 1] = grassy && flat && !t.onPath ? 1 : 0;
+      tileData[i + 1] = grassy && flat && !t.onPath && !t.tower ? 1 : 0;
       tileData[i + 2] = t.vh * STEP;
       tileData[i + 3] = t.type === 'grass' && t.vh > 0.05 ? (t.tower ? 0.5 : 1) : 0;
     }

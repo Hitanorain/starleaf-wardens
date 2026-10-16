@@ -286,6 +286,7 @@
     if (t.type === 'tree' || t.type === 'water' || t.type === 'crystal') return '树木、水面和水晶处无法改变地形';
     if (t.fixed) return '传送门与古树所在的地块无法改变';
     if (t.h + by > MAX_H) return '超过最高地势（3 级）';
+    if (t.tower && t.tower.def.ground) return '这里有地面陷阱（先出售它）';
     if (t.h === 0) {
       const f = Wd.field(new Map([[t, by]]));
       if (!Wd.reachAll(f)) return '不能完全堵死敌人的道路！';
@@ -320,6 +321,7 @@
       if (t.locked) return { err: '有格子落在未开拓的区域', tiles };
       if (t.type === 'tree' || t.type === 'water' || t.type === 'crystal') return { err: '不能盖在树木、水面或水晶上', tiles };
       if (t.fixed) return { err: '不能盖住传送门或古树', tiles };
+      if (t.tower && t.tower.def.ground) return { err: '不能盖住地面陷阱', tiles };
       if (t.h + by > MAX_H) return { err: '超过最高地势（3 级）', tiles };
     }
     const ov = new Map(tiles.map(t => [t, t.h + by]));
