@@ -702,3 +702,36 @@ body.on-title #hud-ctrl, body.on-title #side { display: none !important; }
   #build-bar .tool .ic { width: var(--btn-ic); height: var(--btn-ic); font-size: 26px; }
 }
 #guide { top: 62px; }   /* 放在状态条下方一行，窄屏时不会和居中的状态条相碰 */
+
+/* =================== 底部与地形托盘：严格对称（2026-10-16） =================== */
+/* 所有面板上下左右等距内边距，按钮在面板里垂直居中；组标题是骑在上边框线上的小标签，不占面板内部空间 */
+:root { --pad: 9px; }
+#hero-panel, #build-bar, #hand-bar { padding: var(--pad) 10px; align-items: center; gap: 0; }
+#hand-bar { display: flex; bottom: 128px; }
+.bgroup { position: relative; display: flex; align-items: center; padding: 0 6px; gap: 0; }
+.bgroup + .bgroup { border-left: 1px solid rgba(255, 226, 150, 0.22); margin-left: 4px; padding-left: 10px; }
+.bgroup .bg-row { display: flex; gap: 5px; align-items: center; }
+.bg-label {
+  position: absolute; top: calc(-1 * var(--pad) - 8px); left: 50%; transform: translateX(-50%);
+  white-space: nowrap; font-size: 11px; line-height: 15px; letter-spacing: 1px; padding: 0 9px; border-radius: 8px;
+  background: #241e44; border: 1px solid var(--line); color: var(--dim); pointer-events: none;
+}
+.bgroup + .bgroup .bg-label { margin-left: 2px; }   /* 抵消左边框，让标签在按钮组正上方 */
+.bgroup.tower .bg-label, .bgroup.terra .bg-label, .bgroup.cards .bg-label { color: #e8e2ff; }
+.bgroup.hero .bg-label { color: var(--gold); }
+/* 露娜：头像与技能按钮同高，经验是头像外圈的金色进度环 */
+#hero-panel { gap: 10px; }
+.hero-face { display: flex; align-items: center; justify-content: center; }
+.portrait {
+  --xp: 0%;
+  width: var(--btn-h); height: var(--btn-h); padding: 3px; border: none;
+  background: conic-gradient(#ffe08a var(--xp), rgba(255, 255, 255, 0.14) 0);
+  box-shadow: 0 0 14px rgba(200, 180, 255, 0.5);
+}
+.portrait .ic.big { width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #fff6ff, #c9b4ff 55%, #6f5fbf); }
+.portrait .lv { bottom: -2px; border: 1px solid var(--line); }
+/* 地形托盘内的按钮与手牌同高、居中 */
+#hand-bar .tool.terra, #hand-bar .piece { height: var(--btn-h); }
+#hand-bar .piece { justify-content: center; gap: 6px; }
+@media (max-width: 1300px) { #hand-bar { bottom: 118px; } }

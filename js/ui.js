@@ -131,7 +131,6 @@
     $('#hero-panel').innerHTML = `
       <div class="hero-face">
         <div class="portrait" id="hero-portrait" data-tip="tip:hero">${UI.ic('assets/portraits/luna.png', '🧚', 'big')}<span class="lv" id="hero-lv">Lv1</span></div>
-        <div class="xp"><i id="hero-xp"></i></div>
       </div>
       <div class="bgroup hero"><div class="bg-label">露娜 · 技能</div>
       <div class="skills">
@@ -238,10 +237,9 @@
     if (S.phase !== 'prep') { bar.innerHTML = ''; return; }   // 战斗中收起，把视野让给战场
     const prep = true;
     const tool = (k, ic, emoji, nm, key, tip) => `<button class="tool terra ${UI.tool === k ? 'active' : ''} ${S.ley < 1 ? 'disabled' : ''}" data-tool="${k}" data-tip="${tip}">${UI.ic(ic, emoji)}<span class="nm">${nm}</span><span class="cost ley">💠1</span><kbd>${key}</kbd></button>`;
-    let h = `<div class="terra-tools">${tool('raise', 'assets/icons/tool_raise.png', '⛰️', '隆起', 'Z', 'tip:raise')}${tool('lower', 'assets/icons/tool_lower.png', '⛏️', '削低', 'X', 'tip:lower')}
-      <button class="tool terra small ${S.undo.length ? '' : 'disabled'}" id="btn-undo" data-tip="撤销本次备战阶段的上一步操作（地形 / 建塔），全额返还。快捷键 Ctrl+Z">↶<span class="nm">撤销</span></button></div>
-      <div class="sep"></div>
-      <div class="hand-title">地形手牌 <small>${S.hand.length}/${CFG.HAND_MAX}</small></div>`;
+    let h = `<div class="bgroup terra"><div class="bg-label">地形</div><div class="bg-row terra-tools">${tool('raise', 'assets/icons/tool_raise.png', '⛰️', '隆起', 'Z', 'tip:raise')}${tool('lower', 'assets/icons/tool_lower.png', '⛏️', '削低', 'X', 'tip:lower')}
+      <button class="tool terra small ${S.undo.length ? '' : 'disabled'}" id="btn-undo" data-tip="撤销本次备战阶段的上一步操作（地形 / 建塔），全额返还。快捷键 Ctrl+Z">↶<span class="nm">撤销</span></button></div></div>
+      <div class="bgroup cards"><div class="bg-label">地形手牌 ${S.hand.length}/${CFG.HAND_MAX}</div><div class="bg-row">`;
     S.hand.forEach((id, i) => {
       const pc = G.PIECES[id];
       const on = UI.tool === 'piece:' + i;
@@ -251,7 +249,7 @@
         ${shapeHtml(cells.map(([x, y]) => [x - mx, y - my]))}<span class="nm">${pc.name}</span></button>`;
     });
     if (!S.hand.length) h += `<div class="hand-empty">手牌用完了，每波结束会补充</div>`;
-    h += `<button class="piece reroll ${prep && S.ley >= CFG.REROLL_COST ? '' : 'disabled'}" id="btn-reroll" data-tip="把手里的地形块全部换成新的随机形状">🎲<span class="nm">重抽 💠${CFG.REROLL_COST}</span></button>`;
+    h += `<button class="piece reroll ${prep && S.ley >= CFG.REROLL_COST ? '' : 'disabled'}" id="btn-reroll" data-tip="把手里的地形块全部换成新的随机形状">🎲<span class="nm">重抽 💠${CFG.REROLL_COST}</span></button></div></div>`;
     bar.innerHTML = h;
     bar.querySelectorAll('[data-piece]').forEach(b => b.onclick = () => {
       if (S.phase !== 'prep') { UI.toast('只能在备战阶段改变地形', 'warn'); return; }
@@ -368,7 +366,7 @@
   function tipHtml(key) {
     if (key === 'tip:raise') return `<h4>⛰️ 隆起地块 <kbd>Z</kbd></h4><p>花费 1 地脉能量，把地块抬高一级（最高 3 级）。</p><p>· 高于地面的地块<b>会挡住敌人</b>，可以用来规划敌人的路线。<br>· 塔只能建在高地上。<br>· 2 级、3 级高地上的塔获得<b>射程和伤害加成</b>。<br>· 按住左键拖动可以连续隆起。<br>· 只能在备战阶段使用，不能完全堵死道路。</p>`;
     if (key === 'tip:lower') return `<h4>⛏️ 削低地块 <kbd>X</kbd></h4><p>花费 1 地脉能量，把地块降低一级。降到地面后敌人又能从这里通过。</p>`;
-    if (key === 'tip:hero') return `<h4>🧚 月之仙子 · 露娜 <small class="dim">Lv${G.Hero.lvl}</small></h4><p>会自动攻击附近的敌人，包括飞行单位。<br><b>右键</b>点击地图可以让她飞过去。每次击杀都会给她经验，最高 5 级。<br>点击头像可以把镜头移到她身上。</p>`;
+    if (key === 'tip:hero') return `<h4>🧚 月之仙子 · 露娜 <small class="dim">Lv${G.Hero.lvl}</small></h4><p>会自动攻击附近的敌人，包括飞行单位。<br><b>右键</b>点击地图可以让她飞过去。每次击杀都会给她经验，最高 5 级（头像外圈的金色光环就是经验进度）。<br>点击头像可以把镜头移到她身上。</p>`;
     if (key === 'tip:q' || key === 'tip:e') {
       const k = key.slice(4), sk = G.HERO.skills[k];
       return `<h4>${sk.icon} ${sk.name} <kbd>${k.toUpperCase()}</kbd></h4><p>${sk.desc}</p><p class="dim">冷却 ${fmt(sk.cd * G.Hero.cdMul())} 秒${k === 'q' ? '　·　按 Q 后左键点击目标位置' : ''}</p>`;
@@ -833,7 +831,8 @@
     const Hh = G.Hero;
     $('#hero-lv').textContent = 'Lv' + Hh.lvl;
     const xl = G.HERO.xpLevels;
-    $('#hero-xp').style.width = Hh.lvl >= xl.length ? '100%' : ((Hh.xp - xl[Hh.lvl - 1]) / (xl[Hh.lvl] - xl[Hh.lvl - 1]) * 100) + '%';
+    const xpPct = Hh.lvl >= xl.length ? 100 : (Hh.xp - xl[Hh.lvl - 1]) / (xl[Hh.lvl] - xl[Hh.lvl - 1]) * 100;
+    $('#hero-portrait').style.setProperty('--xp', xpPct.toFixed(1) + '%');   // 头像外圈的金色经验环
     for (const s of ['q', 'e']) {
       const el = $('#sk-' + s);
       const cd = Hh.skill[s], tot = G.HERO.skills[s].cd * G.Hero.cdMul();
