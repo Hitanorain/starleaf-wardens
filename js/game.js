@@ -75,7 +75,7 @@
       this.silT = d.silence ? d.silence.every * (0.3 + Math.random() * 0.7) : 0;
       this.slamT = d.slam ? d.slam.every * 0.6 : 0;
       this.frozenT = 0; this.thawT = 0; this.chillT = 0; this.brittleT = 0; this.brittle = 0;
-      this.slowChain = 0; this.slowImmT = 0; this.confuseT = 0; this.confuseImmT = 0;
+      this.slowChain = 0; this.slowImmT = 0; this.confuseT = 0; this.confuseImmT = 0; this.confusedBy = new Set();
       this.dmgAcc = 0; this.dmgT = 0;
       this.baseEm = G.OmenFX.enemyTint();   // 天象给敌人身体染上的颜色
       for (const m of this.m.mats) m.emissive.copy(this.baseEm);
@@ -158,7 +158,7 @@
         if (Math.random() < dt * 8) FX.emit(this.aimPoint().add(V().set(0, 0.3, 0)), 1, Math.random() < 0.5 ? 0xff8fd8 : 0xc9a0ff, 0.5, 0.5, 0.3, 0, 0.15, 1.8);
         if (this.confuseT <= 0) { this.confuseImmT = CFG.CONFUSE_IMMUNE; if (!this.fly) this.chooseNext(); }
       }
-      const sp = this.speed * (this.slowT > 0 ? 1 - this.slowAmt : 1) * dt;
+      const sp = this.speed * (this.slowT > 0 ? 1 - this.slowAmt : 1) * (this.confuseT > 0 ? CFG.CONFUSE_SPEED : 1) * dt;
       const ox = this.pos.x, oz = this.pos.z;
       if (this.fly) {
         const hx = Wd.heartObj.group.position.x, hz = Wd.heartObj.group.position.z;
@@ -192,9 +192,12 @@
       this.slowT = Math.max(this.slowT, dur);
       return true;
     }
-    // 混乱：Boss 免疫；刚清醒的敌人短时间内免疫
-    confuse(dur) {
+    // 混乱：Boss 免疫；刚清醒的敌人短时间内免疫。
+    // 防止来回循环：同一株迷魂花对同一个敌人只生效一次，每个敌人一生最多被迷惑 CONFUSE_MAX 次
+    confuse(dur, src) {
       if (this.dead || this.fly || this.def.boss || this.confuseImmT > 0 || this.confuseT > 0) return false;
+      if ((src && this.confusedBy.has(src)) || this.confusedBy.size >= CFG.CONFUSE_MAX) return false;
+      this.confusedBy.add(src || {});
       this.confuseT = dur;
       if (this.tile) { const b = backStep(this.tile); if (b) { this.next = b; this.tx = b.wx + this.off.x; this.tz = b.wz + this.off.z; } }
       FX.text(this.aimPoint().add(V().set(0, 0.35, 0)), '混乱', 'confusetxt', 0.8);
@@ -660,7 +663,7 @@
         if (this.cd > 0 || !hit.length) return;
         hit.sort((a, b) => hyp(a.pos.x, a.pos.z, this.pos.x, this.pos.z) - hyp(b.pos.x, b.pos.z, this.pos.x, this.pos.z));
         let n = 0;
-        for (const e of hit) { if (n >= st.targets) break; if (e.confuse(st.confuse)) n++; }
+        for (const e of hit) { if (n >= st.targets) break; if (e.confuse(st.confuse, this)) n++; }
         if (!n) return;
         this.cd = st.cd; this.kick = 0.5;
         A.play('lure', 0.2);

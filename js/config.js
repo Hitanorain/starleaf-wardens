@@ -29,7 +29,9 @@ G.CFG = {
   TOWER_HEAL: 0.35,
   SLOW_CAP: 4,           // 敌人被连续减速超过这么多秒就会挣脱
   SLOW_IMMUNE: 1.5,      // 挣脱后这么多秒内不吃减速
-  CONFUSE_IMMUNE: 2,     // 混乱结束后的免疫时间      // 每波结束，塔自动恢复 35% 最大生命
+  CONFUSE_IMMUNE: 2,     // 混乱结束后的免疫时间
+  CONFUSE_MAX: 2,        // 每个敌人一生最多被迷惑几次（同一株迷魂花只生效一次）
+  CONFUSE_SPEED: 0.6,    // 混乱时往回走的速度倍率      // 每波结束，塔自动恢复 35% 最大生命
   REPAIR_RATE: 0.6,      // 修理费用：缺失生命比例 × 已投入金叶 × 0.6
 };
 
@@ -111,7 +113,7 @@ G.TOWERS = {
   },
   lure: {
     name: '迷魂花阵', key: '8', icon: '🌸', dmgType: 'magic', air: false, ground: true, trap: 'lure',
-    desc: '巨大的迷魂花。敌人靠近时喷出花粉，让附近几个地面敌人陷入混乱、掉头往回走；之后需要冷却。Boss 不受混乱影响。',
+    desc: '巨大的迷魂花。敌人靠近时喷出花粉，让附近几个地面敌人陷入混乱、慢慢掉头往回走；之后需要冷却。同一株花对同一个敌人只生效一次，每个敌人最多被迷惑 2 次；Boss 不受影响。',
     levels: [
       { hp: 130, armor: 0.1,  cost: 80,  dmg: 0, cd: 6.0, range: 1.3, confuse: 2.0, targets: 2 },
       { hp: 180, armor: 0.15, cost: 90,  dmg: 0, cd: 5.5, range: 1.5, confuse: 2.5, targets: 3 },

@@ -104,7 +104,7 @@
 ## 6.55 地面陷阱与减速 / 混乱规则（2026-10-16 加入）
 - `G.TOWERS[type].ground = true` 的是**地面陷阱**（荆棘丛 thorn、泥沼藤网 mire、迷魂花阵 lure，快捷键 6–8）：只能放在 h=0 的草地上，可以放在敌人路线上，不影响寻路（寻路只看地势与地块类型）。高地塔（1–5）仍然只能建在 h≥1。陷阱所在格不能抬高 / 被地形块覆盖。陷阱下面的草和地面装饰会隐藏。
 - 陷阱逻辑在 `Tower.trapUpdate()`：thorn 没有冷却，按每秒伤害 `dmg / cd` 对范围内地面敌人持续造成魔法伤害；mire 每帧对范围内敌人 `applySlow(slow, slowT)`（离开后还持续 slowT 秒），3 级附带腐蚀伤害；lure 有敌人进入范围就迷惑最近的 `targets` 个，然后进入 `cd` 冷却。
-- **所有减速都走 `enemy.applySlow()`**：连续减速超过 `CFG.SLOW_CAP`（4 秒）就挣脱，`SLOW_IMMUNE`（1.5 秒）内不吃减速。**混乱** `enemy.confuse(dur)`：沿距离场往回走（`backStep`），结束后 `CONFUSE_IMMUNE` 秒免疫；Boss 与飞行单位不受混乱。
+- **所有减速都走 `enemy.applySlow()`**：连续减速超过 `CFG.SLOW_CAP`（4 秒）就挣脱，`SLOW_IMMUNE`（1.5 秒）内不吃减速。**混乱** `enemy.confuse(dur)`：沿距离场往回走（`backStep`），结束后 `CONFUSE_IMMUNE` 秒免疫；Boss 与飞行单位不受混乱。**防止来回循环**：同一株迷魂花对同一个敌人只生效一次（`enemy.confusedBy`），每个敌人一生最多被迷惑 `CONFUSE_MAX` 次，混乱时走路速度 ×`CONFUSE_SPEED`。
 
 ## 6.6 无尽模式（`endless.js`）
 - 标题界面选择模式，`G.mode = 'campaign' | 'endless'`（存 localStorage）。`G.newMap` 按模式设置 `CFG.START_REGIONS`（无尽：全部 7×5 区域）和 `CFG.PORTAL_B_WAVE`（无尽：第 3 轮）。开局 `G.Endless.setupRun()`：`S.endless = true`、400 金叶、16 地脉、手牌补满、没有区域扩张。
