@@ -118,6 +118,7 @@
 - 结束时 `Endless.saveBest()` 按地图记录最高轮数（`starleaf.endlessBest`），结算画面显示是否破纪录。
 
 ## 7. 界面
+- **画框式布局**：左上资源条 `#hud-top`、右上控制按钮 `#hud-ctrl`；右侧一列 `#side`（flex 纵向）里依次是波次面板 `#wave-panel` 和塔信息 `#tower-panel`，不会重叠；左下露娜 `#hero-panel`，底部中间建造栏 `#build-bar`（按 高地塔 / 地面陷阱 / 水生 / 经济 分组，紧凑图标，名字在悬停提示里）；建造栏上方的地形托盘 `#hand-bar`（隆起 / 削低 / 撤销 + 地形手牌）**只在备战阶段显示**。
 - 当前工具是一个字符串 `UI.tool`：`raise` / `lower` / `tower:<type>` / `piece:<手牌下标>` / `region:<候选下标>` / `cast:q`。`R` 旋转修改 `UI.rot`。
 - 悬停预览全部在 `UI.frame()` 里（幽灵方块、范围圈、路线长度变化提示）。
 - 通用提示框：元素加 `data-tip="key"`，内容在 `tipHtml()` 里生成。

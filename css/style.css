@@ -594,3 +594,62 @@ body.on-title #omen-veils, body.on-title #omen-reveal { display: none !important
 #build-bar .tool.eco { background: linear-gradient(180deg, rgba(255, 210, 90, 0.22), rgba(30, 24, 52, 0.0)); }
 .hb-tag.eco { background: rgba(255, 215, 106, 0.15); color: #ffe08a; }
 .okind.eco { background: rgba(255, 215, 106, 0.2); color: #ffe08a; padding: 1px 6px; border-radius: 6px; font-size: 11px; }
+
+/* =================== 画框式布局（2026-10-16） =================== */
+/* 左上：资源条 */
+#hud-top { left: 14px; top: 12px; transform: none; gap: 4px; padding: 5px 6px; border-radius: 14px; }
+#hud-top .res { font-size: 16px; padding: 4px 10px; }
+/* 右上：控制按钮 */
+#hud-ctrl { position: absolute; top: 12px; right: 14px; padding: 5px 6px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 6px 24px rgba(30, 10, 60, 0.35); backdrop-filter: blur(6px); }
+#hud-ctrl .ctrls { margin-left: 0; }
+#hud-ctrl .ctrls button { min-width: 34px; height: 32px; padding: 0 8px; }
+/* 右侧一列：波次 + 塔信息 */
+#side { position: absolute; top: 62px; right: 14px; width: 264px; display: flex; flex-direction: column; gap: 10px;
+  max-height: calc(100% - 190px); overflow-y: auto; scrollbar-width: none; pointer-events: none; }
+#side::-webkit-scrollbar { display: none; }
+#side > * { pointer-events: auto; }
+#wave-panel, #tower-panel { position: static; width: auto; box-shadow: 0 6px 24px rgba(30, 10, 60, 0.35); backdrop-filter: blur(6px); }
+#tower-panel { animation: slidein .22s ease; }
+@keyframes slidein { from { opacity: 0; transform: translateX(16px); } }
+/* 左侧：指引在资源条下方，区域扩张面板在左侧一列 */
+#guide { top: 66px; }
+#region-panel { top: 62px; left: 14px; max-height: calc(100% - 190px); overflow-y: auto; }
+#toasts { top: 16px; }
+/* 底部：左下露娜，中间建造栏 */
+#dock { left: 14px; right: 14px; bottom: 12px; transform: none; justify-content: center; pointer-events: none; }
+#dock > * { pointer-events: auto; }
+#hero-panel { position: absolute; left: 0; bottom: 0; padding: 7px 9px; gap: 7px; }
+.portrait, .portrait .ic.big { width: 54px; height: 54px; }
+.xp { width: 50px; }
+.skill { width: 50px; height: 50px; }
+.skill .ic { width: 30px; height: 30px; font-size: 24px; }
+/* 建造栏：紧凑图标按钮，按组排列，每组一个小标题 */
+#build-bar { gap: 4px; padding: 6px 8px 7px; border-radius: 16px; }
+.bgroup { display: flex; flex-direction: column; gap: 3px; padding: 0 4px; }
+.bgroup + .bgroup { border-left: 1px solid rgba(255, 226, 150, 0.22); padding-left: 8px; }
+.bg-label { font-size: 10px; letter-spacing: 2px; color: var(--dim); padding-left: 2px; }
+.bgroup.trap .bg-label { color: #b8e8a0; } .bgroup.water .bg-label { color: #a8dcff; } .bgroup.eco .bg-label { color: #ffe08a; }
+.bg-row { display: flex; gap: 4px; }
+#build-bar .tool { width: 54px; padding: 5px 2px 4px; gap: 1px; }
+#build-bar .tool .ic { width: 30px; height: 30px; font-size: 24px; }
+#build-bar .tool kbd { top: 2px; right: 2px; font-size: 9px; padding: 1px 3px; }
+#build-bar .tool .cost { font-size: 11px; }
+#build-bar .tool.trap, #build-bar .tool.water, #build-bar .tool.eco { background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03)); }
+/* 地形托盘：贴在建造栏上方，只在备战时出现 */
+#hand-bar { bottom: 94px; padding: 6px 8px; background: var(--panel); box-shadow: 0 6px 24px rgba(30, 10, 60, 0.3); backdrop-filter: blur(6px); animation: trayin .25s ease; }
+@keyframes trayin { from { opacity: 0; transform: translate(-50%, 10px); } }
+.terra-tools { display: flex; gap: 5px; }
+#hand-bar .tool.terra { width: 54px; padding: 5px 2px 4px; gap: 1px; }
+#hand-bar .tool.terra .ic { width: 28px; height: 28px; font-size: 22px; }
+#hand-bar .tool.terra.small { font-size: 20px; justify-content: center; }
+#hand-bar .tool .nm { font-size: 11px; }
+#hand-bar .piece { width: 58px; }
+body.on-title #hud-ctrl, body.on-title #side { display: none !important; }
+@media (max-width: 1300px) {
+  #hud-top .res { font-size: 14px; padding: 3px 7px; }
+  #build-bar .tool, #hand-bar .tool.terra { width: 48px; }
+  #build-bar .tool .ic { width: 26px; height: 26px; font-size: 20px; }
+  #side { width: 236px; }
+}
+.stats .row.wide { grid-column: 1 / -1; }

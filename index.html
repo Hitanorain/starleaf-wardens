@@ -8,19 +8,23 @@
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="stylesheet" href="css/style.css?v=27">
 </head>
 <body>
 <div id="app">
   <div id="overlay"></div>
 
-  <!-- 顶栏 -->
+  <!-- 画框式布局：四周放信息，中间留给战场 -->
+  <!-- 左上：资源 -->
   <div id="hud-top">
     <div class="res" data-tip="月光古树的生命。敌人到达古树会扣除生命，归零即失败。"><span>💚</span><b id="r-lives">20</b></div>
     <div class="res" data-tip="金叶：建塔和升级用。击杀敌人、完成波次都会获得。"><span>🍂</span><b id="r-gold">0</b></div>
     <div class="res" data-tip="地脉能量：隆起或削低地块用。每波结束后补充。"><span>💠</span><b id="r-ley">0</b></div>
     <div class="res" data-tip="当前波次 / 总波次"><span>🌙</span><b id="r-wave">1 / 10</b></div>
     <div class="res path" data-tip="敌人的路线长度（格）。路线越长，塔的输出时间越多。"><span>👣</span><b id="r-path">0</b></div>
+  </div>
+  <!-- 右上：控制按钮 -->
+  <div id="hud-ctrl">
     <div class="ctrls">
       <button id="btn-speed" data-tip="游戏速度（F）">▶ 1x</button>
       <button id="btn-pause" data-tip="暂停（P）">⏸</button>
@@ -31,11 +35,15 @@
     </div>
   </div>
 
-  <div id="wave-panel" hidden></div>
+  <!-- 右侧一列：波次面板在上，塔信息在下（自动排开，不会重叠） -->
+  <div id="side">
+    <div id="wave-panel" hidden></div>
+    <div id="tower-panel" hidden></div>
+  </div>
   <button id="btn-start" hidden></button>
-  <div id="tower-panel" hidden></div>
+  <!-- 地形托盘：隆起 / 削低 / 撤销 + 地形手牌（只在备战时出现） -->
   <div id="hand-bar"></div>
-  <!-- 底部操作栏：露娜（头像 + 技能）紧挨着建造栏，居中 -->
+  <!-- 底部：左下露娜与技能，中间建造栏 -->
   <div id="dock">
     <div id="hero-panel"></div>
     <div id="build-bar"></div>
@@ -156,19 +164,19 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-<script src="js/config.js?v=26"></script>
-<script src="js/models.js?v=26"></script>
-<script src="js/audio.js?v=26"></script>
-<script src="js/music.js?v=26"></script>
-<script src="js/fx.js?v=26"></script>
-<script src="js/terrain.js?v=26"></script>
-<script src="js/grass.js?v=26"></script>
-<script src="js/world.js?v=26"></script>
-<script src="js/game.js?v=26"></script>
-<script src="js/endless.js?v=26"></script>
-<script src="js/omenfx.js?v=26"></script>
-<script src="js/guide.js?v=26"></script>
-<script src="js/ui.js?v=26"></script>
-<script src="js/main.js?v=26"></script>
+<script src="js/config.js?v=27"></script>
+<script src="js/models.js?v=27"></script>
+<script src="js/audio.js?v=27"></script>
+<script src="js/music.js?v=27"></script>
+<script src="js/fx.js?v=27"></script>
+<script src="js/terrain.js?v=27"></script>
+<script src="js/grass.js?v=27"></script>
+<script src="js/world.js?v=27"></script>
+<script src="js/game.js?v=27"></script>
+<script src="js/endless.js?v=27"></script>
+<script src="js/omenfx.js?v=27"></script>
+<script src="js/guide.js?v=27"></script>
+<script src="js/ui.js?v=27"></script>
+<script src="js/main.js?v=27"></script>
 </body>
 </html>

@@ -110,22 +110,21 @@
   };
 
   function buildBar() {
-    let h = `
-      <button class="tool" data-tool="raise" data-tip="tip:raise">${UI.ic('assets/icons/tool_raise.png', '⛰️')}<span class="nm">隆起</span><span class="cost ley">💠1</span><kbd>Z</kbd></button>
-      <button class="tool" data-tool="lower" data-tip="tip:lower">${UI.ic('assets/icons/tool_lower.png', '⛏️')}<span class="nm">削低</span><span class="cost ley">💠1</span><kbd>X</kbd></button>
-      <button class="tool small" id="btn-undo" data-tip="撤销本次备战阶段的上一步操作（地形 / 建塔），全额返还。快捷键 Ctrl+Z">↶<span class="nm">撤销</span></button>
-      <div class="sep"></div>`;
     const ord = k => k === '0' ? 10 : +k || 11;   // 0 键排在 9 后面，字母键最后
+    const GROUPS = [['高地塔', 'tower'], ['地面陷阱', 'trap'], ['水生', 'water'], ['经济', 'eco']];
     const group = d => d.eco ? 3 : d.water ? 2 : d.ground ? 1 : 0;
     const types = Object.keys(G.TOWERS).sort((a, b) => ord(G.TOWERS[a].key) - ord(G.TOWERS[b].key));
-    types.forEach((type, i) => {
-      const d = G.TOWERS[type];
-      if (i > 0 && group(d) !== group(G.TOWERS[types[i - 1]])) h += `<div class="sep"></div>`;
-      h += `<button class="tool tower ${d.eco ? 'eco' : d.water ? 'water' : d.ground ? 'trap' : ''}" data-tool="tower:${type}" data-tip="tip:tower:${type}">${towerIc(type)}<span class="nm">${d.name}</span><span class="cost gold" data-cost="${type}">🍂${d.levels[0].cost}</span><kbd>${d.key}</kbd></button>`;
+    let h = '';
+    GROUPS.forEach(([label, cls], gi) => {
+      const list = types.filter(t => group(G.TOWERS[t]) === gi);
+      if (!list.length) return;
+      h += `<div class="bgroup ${cls}"><div class="bg-label">${label}</div><div class="bg-row">` + list.map(type => {
+        const d = G.TOWERS[type];
+        return `<button class="tool tower ${cls}" data-tool="tower:${type}" data-tip="tip:tower:${type}">${towerIc(type)}<span class="cost gold" data-cost="${type}">🍂${d.levels[0].cost}</span><kbd>${d.key}</kbd></button>`;
+      }).join('') + `</div></div>`;
     });
     $('#build-bar').innerHTML = h;
     $('#build-bar').querySelectorAll('[data-tool]').forEach(b => b.onclick = () => UI.setTool(UI.tool === b.dataset.tool ? null : b.dataset.tool));
-    $('#btn-undo').onclick = () => G.act.undo();
   }
   function buildHero() {
     const H = G.HERO;
@@ -167,7 +166,7 @@
     UI.slotKey = null;
     if (!t || !t.startsWith('region:')) G.Terrain.showSlots(null);
     if (t) { S.selected = null; }
-    document.querySelectorAll('#build-bar [data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
+    document.querySelectorAll('#build-bar [data-tool], #hand-bar [data-tool]').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
     $('#sk-q').classList.toggle('active', t === 'cast:q');
     $('#sk-n').classList.toggle('active', t === 'cast:nuke');
     document.body.dataset.tool = t || '';
@@ -193,8 +192,7 @@
     });
     const prep = S.phase === 'prep';
     document.body.classList.remove('disabled');
-    document.querySelectorAll('#build-bar [data-tool=raise], #build-bar [data-tool=lower]').forEach(b => b.classList.toggle('disabled', !prep || S.ley < 1));
-    $('#btn-undo').classList.toggle('disabled', !prep || !S.undo.length);
+
     // 波次面板
     const wp = $('#wave-panel');
     if (prep && (S.endless || S.wave < G.WAVES.length)) {
@@ -236,9 +234,13 @@
   }
   function renderHand() {
     const bar = $('#hand-bar');
-    if (!['prep', 'combat', 'blessing'].includes(S.phase)) { bar.innerHTML = ''; return; }
-    const prep = S.phase === 'prep';
-    let h = `<div class="hand-title">地形手牌 <small>${S.hand.length}/${CFG.HAND_MAX}</small></div>`;
+    if (S.phase !== 'prep') { bar.innerHTML = ''; return; }   // 战斗中收起，把视野让给战场
+    const prep = true;
+    const tool = (k, ic, emoji, nm, key, tip) => `<button class="tool terra ${UI.tool === k ? 'active' : ''} ${S.ley < 1 ? 'disabled' : ''}" data-tool="${k}" data-tip="${tip}">${UI.ic(ic, emoji)}<span class="nm">${nm}</span><span class="cost ley">💠1</span><kbd>${key}</kbd></button>`;
+    let h = `<div class="terra-tools">${tool('raise', 'assets/icons/tool_raise.png', '⛰️', '隆起', 'Z', 'tip:raise')}${tool('lower', 'assets/icons/tool_lower.png', '⛏️', '削低', 'X', 'tip:lower')}
+      <button class="tool terra small ${S.undo.length ? '' : 'disabled'}" id="btn-undo" data-tip="撤销本次备战阶段的上一步操作（地形 / 建塔），全额返还。快捷键 Ctrl+Z">↶<span class="nm">撤销</span></button></div>
+      <div class="sep"></div>
+      <div class="hand-title">地形手牌 <small>${S.hand.length}/${CFG.HAND_MAX}</small></div>`;
     S.hand.forEach((id, i) => {
       const pc = G.PIECES[id];
       const on = UI.tool === 'piece:' + i;
@@ -256,6 +258,8 @@
       UI.setTool(UI.tool === t ? null : t);
     });
     $('#btn-reroll').onclick = () => G.act.rerollHand();
+    bar.querySelectorAll('.terra-tools [data-tool]').forEach(b => b.onclick = () => UI.setTool(UI.tool === b.dataset.tool ? null : b.dataset.tool));
+    $('#btn-undo').onclick = () => G.act.undo();
   }
   function renderRegions() {
     const p = $('#region-panel');
@@ -328,7 +332,7 @@
 
   // 地面陷阱的属性行与升级对比
   function trapRows(d, st, tw) {
-    const r = (k, v) => `<div class="row"><b>${k}</b>${v}</div>`;
+    const r = (k, v) => `<div class="row wide"><b>${k}</b>${v}</div>`;
     if (d.eco) return r('产出', `每 ${st.cd.toFixed(1)} 秒 +${st.gold} 金叶（仅战斗中）`) + r('上限', `同时最多 ${d.limit} 棵`);
     if (d.water && G.TOWERS.lotus === d) return r('月光', `每 ${st.cd.toFixed(0)} 秒为古树恢复 ${st.heal} 点生命`) + r('上限', `古树生命最多恢复到 ${CFG.START_LIVES}`) + (tw && S.phase === 'combat' ? r('下一次', S.lives >= CFG.START_LIVES ? '古树生命已满' : `${Math.ceil(Math.max(0, tw.cd))} 秒后`) : '');
     if (d.water) return r('修复', `范围内的塔每秒 +${st.regen} 生命`) + r('滋养', `攻击速度 +${fmt(st.haste * 100)}%`) + r('范围', st.range.toFixed(1) + ' 格');
@@ -612,6 +616,7 @@
       if (k === ' ') { e.preventDefault(); if (S.phase === 'prep') G.startWave(); return; }
       if (k === 'escape') { if (UI.tool) UI.setTool(null); else { S.selected = null; UI.refresh(); } toggleHelp(false); return; }
       if (k === 'z' && (e.ctrlKey || e.metaKey)) { G.act.undo(); e.preventDefault(); return; }
+      if ((k === 'z' || k === 'x') && S.phase !== 'prep') { UI.toast('只能在备战阶段改变地形', 'warn'); return; }
       if (k === 'z') { UI.setTool(UI.tool === 'raise' ? null : 'raise'); return; }
       if (k === 'x') { UI.setTool(UI.tool === 'lower' ? null : 'lower'); return; }
       for (const type in G.TOWERS) if (G.TOWERS[type].key.toLowerCase() === k) { UI.setTool(UI.tool === 'tower:' + type ? null : 'tower:' + type); return; }
