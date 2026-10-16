@@ -108,6 +108,8 @@
 
 - **水生植物**（`water: true`，快捷键 9 / 0）：只能种在 `type === 'water'` 的地块上，逻辑在 `Tower.waterUpdate()`。月泉睡莲 lotus：战斗中每 `cd` 秒给古树 +`heal` 生命（不超过 `CFG.START_LIVES`）；灵泉水藻 spring：范围内的塔每秒恢复 `regen` 生命，并设置 `tower.springT / springHaste`，在 `Tower.stats()` 里提升攻速（多株取最高）。建造栏按 高地塔 | 地面陷阱 | 水生植物 分组。
 
+- **经济植物**：金叶摇钱树 money（`eco: true, limit: 3`，快捷键 B）：种在平地上、不能种在当前路线上，战斗中每 `cd` 秒 +`gold` 金叶（统计在 `S.stats.grown`）。`def.limit` 限制同时存在的数量。
+
 ## 6.6 无尽模式（`endless.js`）
 - 标题界面选择模式，`G.mode = 'campaign' | 'endless'`（存 localStorage）。`G.newMap` 按模式设置 `CFG.START_REGIONS`（无尽：全部 7×5 区域）和 `CFG.PORTAL_B_WAVE`（无尽：第 3 轮）。开局 `G.Endless.setupRun()`：`S.endless = true`、400 金叶、16 地脉、手牌补满、没有区域扩张。
 - `S.wave` 在无尽模式里就是"轮数"。`G.waveGroups(n)` 按模式取出兵组（无尽：`Endless.groups(r)`，2 段随机进攻，按轮缓存，备战面板的预告与实际一致）；`G.queueGroups()` 把出兵组展开成队列（无尽模式在这里抽精英怪）。

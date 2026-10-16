@@ -20,8 +20,8 @@
       hand: [], expandTokens: 0, offers: null, rng: Math.random,
       omens: [], om: Object.assign({}, G.OMEN_DEFAULT), purged: false, seenOmen: false, lastOmens: [], boltT: 0,
       mods: {
-        dmg: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1, mire: 1, lure: 1, lotus: 1, spring: 1 },
-        range: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1, mire: 1, lure: 1, lotus: 1, spring: 1 },
+        dmg: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1, mire: 1, lure: 1, lotus: 1, spring: 1, money: 1 },
+        range: { archer: 1, obelisk: 1, thorn: 1, catapult: 1, chime: 1, frost: 1, mire: 1, lure: 1, lotus: 1, spring: 1, money: 1 },
         rate: 1, heightMul: 1, cost: 1, sell: CFG.SELL_RATE, killGold: 1, leyBonus: 0, splash: 1, heroDmg: 1, heroCd: 1,
       },
     });
@@ -420,7 +420,7 @@
       cd: L.cd / (S.mods.rate * om.rate * (buff ? 1 + G.HERO.skills.e.haste : 1)),
       splash: (L.splash || 0) * S.mods.splash, minRange: L.minRange || 0, slow: L.slow || 0,
       slowT: L.slowT || 1.2, freeze: L.freeze || 0, freezeAoe: L.freezeAoe || 0, brittle: L.brittle || 0,
-      confuse: L.confuse || 0, targets: L.targets || 0, heal: L.heal || 0, regen: L.regen || 0, haste: L.haste || 0,
+      confuse: L.confuse || 0, targets: L.targets || 0, heal: L.heal || 0, regen: L.regen || 0, haste: L.haste || 0, gold: L.gold || 0,
       hp: L.hp, armor: L.armor || 0,
       multi: L.multi || 1, chain: L.chain || 0, rM, dM,
     };
@@ -583,6 +583,16 @@
           if (st.brittle) { e.brittle = st.brittle; e.brittleT = st.slowT; }
           if (i < 10) FX.emit(e.aimPoint(), 3, 0xcff4ff, 0.8, 0.5, 0.4, 0.5, 0.15, 1.6);   // 雪花
         });
+        return;
+      }
+      if (this.def.eco) {   // 摇钱树：战斗中定时掉落金叶
+        if (this.cd > 0) return;
+        this.cd = st.cd; this.kick = 0.4;
+        S.gold += st.gold; S.stats.grown = (S.stats.grown || 0) + st.gold;
+        const top = V().set(this.pos.x, Wd.top(this.tile) + 0.7, this.pos.z);
+        FX.emit(top, 8 + this.level * 4, 0xffd76a, 1.6, 0.7, 1.2, 4, 0.3, 2);
+        FX.text(top.clone().add(V().set(0, 0.3, 0)), '+' + st.gold, 'goldtxt', 0.9);
+        A.play('coin', 0.15);
         return;
       }
       if (this.def.trap) { this.trapUpdate(dt, st); return; }
@@ -1262,11 +1272,14 @@
     if (!t) return '无效位置';
     if (t.locked) return '这里还没有开拓';
     if (t.tower) return '这里已经有塔了';
+    const lim = G.TOWERS[type].limit;
+    if (lim && S.towers.filter(x => x.type === type).length >= lim) return `${G.TOWERS[type].name}最多只能种 ${lim} 棵`;
     if (G.TOWERS[type].water) {
       if (t.type !== 'water') return '水生植物只能种在水面上';
     } else if (G.TOWERS[type].ground) {
       if (t.type !== 'grass' || t.h !== 0) return '陷阱只能放在平地上（可以放在敌人路线上）';
       if (t.fixed) return '不能放在传送门或古树上';
+      if (G.TOWERS[type].eco && t.onPath) return '摇钱树不能种在敌人的路线上';
     } else {
       if (t.type !== 'grass' && t.type !== 'rock') return '这里不能建塔';
       if (t.h < 1) return '塔只能建在高地上（先用地形块把地抬高）';

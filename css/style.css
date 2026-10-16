@@ -590,3 +590,7 @@ body.on-title #omen-veils, body.on-title #omen-reveal { display: none !important
 .hb-tag.water { background: rgba(110, 200, 255, 0.15); color: #bfeaff; }
 .okind.water { background: rgba(110, 200, 255, 0.2); color: #bfeaff; padding: 1px 6px; border-radius: 6px; font-size: 11px; }
 .ftext.healtxt { color: #9fffc0; font-size: 22px; text-shadow: 0 0 10px #2a9a5a, 0 1px 3px #000; }
+
+#build-bar .tool.eco { background: linear-gradient(180deg, rgba(255, 210, 90, 0.22), rgba(30, 24, 52, 0.0)); }
+.hb-tag.eco { background: rgba(255, 215, 106, 0.15); color: #ffe08a; }
+.okind.eco { background: rgba(255, 215, 106, 0.2); color: #ffe08a; padding: 1px 6px; border-radius: 6px; font-size: 11px; }

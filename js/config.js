@@ -139,6 +139,16 @@ G.TOWERS = {
       { hp: 230, armor: 0.2,  cost: 140, dmg: 0, cd: 1, range: 2.8, regen: 8, haste: 0.3, note: '攻速加成 +30%' },
     ],
   },
+  // ---------- 经济植物 ----------
+  money: {
+    name: '金叶摇钱树', key: 'B', icon: '🌳', dmgType: 'magic', air: false, ground: true, eco: true, limit: 3,
+    desc: '挂满金叶的摇钱树，种在平地上。战斗中每隔几秒掉落一把金叶。最多同时种 3 棵；它也会被会拆塔的敌人攻击，记得种在安全的地方。',
+    levels: [
+      { hp: 140, armor: 0.1,  cost: 150, dmg: 0, cd: 5, range: 0.5, gold: 6 },
+      { hp: 200, armor: 0.15, cost: 150, dmg: 0, cd: 5, range: 0.5, gold: 10 },
+      { hp: 270, armor: 0.2,  cost: 200, dmg: 0, cd: 5, range: 0.5, gold: 16, note: '金叶满枝：每次掉落 16 金叶' },
+    ],
+  },
 };
 
 G.ENEMIES = {

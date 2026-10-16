@@ -940,6 +940,34 @@
         crystal.castShadow = false; spin(bob(crystal, 0.04, 1.8), 1.4);
       }
       r.muzzle.position.set(0, 0.3, 0); g.add(r.muzzle);
+    } else if (type === 'money') {
+      // 金叶摇钱树：圆润的金黄树冠，挂着发光的金币；3 级树干也变成金色
+      const trunkC = level === 2 ? M.mat(0xd8a84a, { emissive: 0x6b4a00, emissiveIntensity: 0.4 }) : M.mat(0x7a5236);
+      part(g, GEO.ico0, M.mat(0x5a8a3a), [0, 0.03, 0], [0.3, 0.06, 0.3]);
+      const H = [0.32, 0.38, 0.44][level];
+      part(g, GEO.cyl6, trunkC, [0, H / 2, 0], [0.05, H, 0.05]);
+      for (const sx of [1, -1]) part(g, GEO.cyl6, trunkC, [sx * 0.06, H * 0.75, 0], [0.025, 0.16, 0.025], [0, 0, -sx * 0.7]);
+      const leafC = [0xd8c050, 0xe8c84a, 0xffd65a][level];
+      const crown = new THREE.Group(); crown.position.y = H + 0.12; g.add(crown);
+      const blobs = [[0, 0.04, 0, 0.2], [0.13, 0, 0.05, 0.13], [-0.12, 0, -0.04, 0.13], [0.02, -0.01, -0.13, 0.12], [-0.03, 0.02, 0.13, 0.12]];
+      if (level >= 1) blobs.push([0.08, 0.12, 0.06, 0.1], [-0.08, 0.11, -0.07, 0.1]);
+      for (const [x, y, z, r0] of blobs) part(crown, GEO.ico1, M.mat(leafC, { emissive: 0x6b5000, emissiveIntensity: 0.3 + level * 0.1 }), [x, y, z], r0);
+      // 挂着的金币（扁圆柱，会轻轻摇晃）
+      const coinM = M.glow(0xffb52a, 1, false, 1.25);
+      const n = [5, 7, 10][level];
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2 + 0.3, rr = 0.17 + (i % 2) * 0.05;
+        const c = part(crown, GEO.cyl12, coinM, [Math.cos(a) * rr, -0.1 - (i % 3) * 0.03, Math.sin(a) * rr], [0.035, 0.008, 0.035], [Math.PI / 2, a, 0]);
+        c.castShadow = false;
+        bob(c, 0.012, 2 + (i % 3), i);
+      }
+      r.bloom = crown;
+      if (level === 2) {
+        const sparkle = new THREE.Group(); sparkle.position.y = H + 0.15; g.add(sparkle);
+        for (let i = 0; i < 4; i++) part(sparkle, GEO.oct, M.glow(0xfff4c0, 1, false, 2.2), [Math.cos(i * 1.57) * 0.3, (i % 2) * 0.1, Math.sin(i * 1.57) * 0.3], 0.025).castShadow = false;
+        spin(sparkle, 1);
+      }
+      r.muzzle.position.set(0, H + 0.2, 0); g.add(r.muzzle);
     }
     // 等级标记：金色小宝石
     for (let i = 0; i <= level; i++) {

@@ -115,13 +115,13 @@
       <button class="tool" data-tool="lower" data-tip="tip:lower">${UI.ic('assets/icons/tool_lower.png', '⛏️')}<span class="nm">削低</span><span class="cost ley">💠1</span><kbd>X</kbd></button>
       <button class="tool small" id="btn-undo" data-tip="撤销本次备战阶段的上一步操作（地形 / 建塔），全额返还。快捷键 Ctrl+Z">↶<span class="nm">撤销</span></button>
       <div class="sep"></div>`;
-    const ord = k => +k || 10;   // 0 键排在最后
-    const group = d => d.water ? 2 : d.ground ? 1 : 0;
+    const ord = k => k === '0' ? 10 : +k || 11;   // 0 键排在 9 后面，字母键最后
+    const group = d => d.eco ? 3 : d.water ? 2 : d.ground ? 1 : 0;
     const types = Object.keys(G.TOWERS).sort((a, b) => ord(G.TOWERS[a].key) - ord(G.TOWERS[b].key));
     types.forEach((type, i) => {
       const d = G.TOWERS[type];
       if (i > 0 && group(d) !== group(G.TOWERS[types[i - 1]])) h += `<div class="sep"></div>`;
-      h += `<button class="tool tower ${d.water ? 'water' : d.ground ? 'trap' : ''}" data-tool="tower:${type}" data-tip="tip:tower:${type}">${towerIc(type)}<span class="nm">${d.name}</span><span class="cost gold" data-cost="${type}">🍂${d.levels[0].cost}</span><kbd>${d.key}</kbd></button>`;
+      h += `<button class="tool tower ${d.eco ? 'eco' : d.water ? 'water' : d.ground ? 'trap' : ''}" data-tool="tower:${type}" data-tip="tip:tower:${type}">${towerIc(type)}<span class="nm">${d.name}</span><span class="cost gold" data-cost="${type}">🍂${d.levels[0].cost}</span><kbd>${d.key}</kbd></button>`;
     });
     $('#build-bar').innerHTML = h;
     $('#build-bar').querySelectorAll('[data-tool]').forEach(b => b.onclick = () => UI.setTool(UI.tool === b.dataset.tool ? null : b.dataset.tool));
@@ -288,7 +288,8 @@
     const st = tw.stats();
     const d = tw.def, L = d.levels[tw.level];
     const h = tw.tile.h;
-    const bonus = d.water ? `<span class="hb-tag water">水生植物：种在水面上</span>`
+    const bonus = d.eco ? `<span class="hb-tag eco">经济植物：战斗中持续产出金叶${S.stats.grown ? `（本局已产出 🍂${S.stats.grown}）` : ''}</span>`
+      : d.water ? `<span class="hb-tag water">水生植物：种在水面上</span>`
       : d.ground ? `<span class="hb-tag trap">地面陷阱：只影响地面敌人，敌人可以从上面走过</span>`
       : h >= 2 ? `<span class="hb-tag">地势 ${h} 级：射程 +${fmt((st.rM - 1) * 100)}%　伤害 +${fmt((st.dM - 1) * 100)}%</span>` : `<span class="hb-tag dim">地势 1 级（抬高到 2、3 级可获得射程与伤害加成）</span>`;
     let rows = d.ground || d.water ? trapRows(d, st, tw)
@@ -328,6 +329,7 @@
   // 地面陷阱的属性行与升级对比
   function trapRows(d, st, tw) {
     const r = (k, v) => `<div class="row"><b>${k}</b>${v}</div>`;
+    if (d.eco) return r('产出', `每 ${st.cd.toFixed(1)} 秒 +${st.gold} 金叶（仅战斗中）`) + r('上限', `同时最多 ${d.limit} 棵`);
     if (d.water && G.TOWERS.lotus === d) return r('月光', `每 ${st.cd.toFixed(0)} 秒为古树恢复 ${st.heal} 点生命`) + r('上限', `古树生命最多恢复到 ${CFG.START_LIVES}`) + (tw && S.phase === 'combat' ? r('下一次', S.lives >= CFG.START_LIVES ? '古树生命已满' : `${Math.ceil(Math.max(0, tw.cd))} 秒后`) : '');
     if (d.water) return r('修复', `范围内的塔每秒 +${st.regen} 生命`) + r('滋养', `攻击速度 +${fmt(st.haste * 100)}%`) + r('范围', st.range.toFixed(1) + ' 格');
     if (d.trap === 'thorn') return r('每秒伤害', `${fmt(st.dmg / st.cd)} <small>魔法 · 无冷却</small>`) + r('范围', st.range.toFixed(1) + ' 格');
@@ -336,6 +338,7 @@
     return '';
   }
   function trapUpgrade(d, st, nx) {
+    if (d.eco) return `每次 +${st.gold} → <b>+${nx.gold}</b> 金叶`;
     if (G.TOWERS.lotus === d) return `间隔 ${st.cd.toFixed(0)}s → <b>${nx.cd.toFixed(0)}s</b>`;
     if (G.TOWERS.spring === d) return `修复 ${st.regen}/秒 → <b>${nx.regen}/秒</b>　攻速 +${fmt(st.haste * 100)}% → <b>+${fmt(nx.haste * 100)}%</b>`;
     if (d.trap === 'thorn') return `每秒伤害 ${fmt(st.dmg / st.cd)} → <b>${fmt(nx.dmg / nx.cd)}</b>`;
@@ -372,7 +375,7 @@
     if (key.startsWith('tip:tower:')) {
       const type = key.slice(10), d = G.TOWERS[type];
       const st = G.towerStats(type, 0, 1, false);
-      if (d.ground || d.water) return `<h4>${d.icon} ${d.name} <kbd>${d.key}</kbd> <small class="okind ${d.water ? 'water' : 'trap'}">${d.water ? '水生植物' : '地面陷阱'}</small></h4><p>${d.desc}</p><div class="tiprows">${trapRows(d, st)}</div><p class="dim">建造 🍂${G.towerCost(type, 0)}　·　${d.water ? '只能种在水面上' : '只能放在平地上'}　·　生命 ${st.hp}</p>`;
+      if (d.ground || d.water) return `<h4>${d.icon} ${d.name} <kbd>${d.key}</kbd> <small class="okind ${d.eco ? 'eco' : d.water ? 'water' : 'trap'}">${d.eco ? '经济植物' : d.water ? '水生植物' : '地面陷阱'}</small></h4><p>${d.desc}</p><div class="tiprows">${trapRows(d, st)}</div><p class="dim">建造 🍂${G.towerCost(type, 0)}　·　${d.water ? '只能种在水面上' : '只能放在平地上'}　·　生命 ${st.hp}</p>`;
       const extra = [st.slow ? `减速 <b>${fmt(st.slow * 100)}%</b>` : '', st.freeze ? `冰冻 <b>${st.freeze.toFixed(1)}</b> 秒` : ''].filter(Boolean).join('　');
       return `<h4>${d.icon} ${d.name} <kbd>${d.key}</kbd></h4><p>${d.desc}</p>
         <p>伤害 <b>${fmt(st.dmg)}</b>（${d.dmgType === 'magic' ? '魔法' : '物理'}）　${d.pulse ? '频率' : '攻速'} <b>${(1 / st.cd).toFixed(2)}</b>/秒　射程 <b>${st.range.toFixed(1)}</b>　对空 ${d.air ? '✔' : '✘'}${extra ? '<br>' + extra : ''}</p>
@@ -611,7 +614,7 @@
       if (k === 'z' && (e.ctrlKey || e.metaKey)) { G.act.undo(); e.preventDefault(); return; }
       if (k === 'z') { UI.setTool(UI.tool === 'raise' ? null : 'raise'); return; }
       if (k === 'x') { UI.setTool(UI.tool === 'lower' ? null : 'lower'); return; }
-      for (const type in G.TOWERS) if (G.TOWERS[type].key === k) { UI.setTool(UI.tool === 'tower:' + type ? null : 'tower:' + type); return; }
+      for (const type in G.TOWERS) if (G.TOWERS[type].key.toLowerCase() === k) { UI.setTool(UI.tool === 'tower:' + type ? null : 'tower:' + type); return; }
       if (k === 'r' && UI.tool && (UI.tool.startsWith('piece:') || UI.tool.startsWith('region:'))) { UI.rot = (UI.rot + 1) % 4; UI.slotKey = null; A.play('hit'); UI.refresh(); return; }
       if (k === 'q') { skillQ(); return; }
       if (k === 'e') { G.Hero.castBloom(); return; }
@@ -700,7 +703,7 @@
       setGhostMat(g, !err);
       const st = G.towerStats(type, 0, G.TOWERS[type].ground || G.TOWERS[type].water ? 1 : Math.max(1, t.h), false);
       showRange(t.wx, t.wz, st.range, st.minRange, err ? 0xff8080 : 0xfff4c0);
-      wtip = err ? `<span class="bad">${err}</span>` : G.TOWERS[type].water ? `${G.TOWERS[type].name}<br><span class="dim">Shift+点击 连续建造</span>`
+      wtip = err ? `<span class="bad">${err}</span>` : G.TOWERS[type].water || G.TOWERS[type].eco ? `${G.TOWERS[type].name}<br><span class="dim">Shift+点击 连续建造</span>`
         : G.TOWERS[type].ground ? `${G.TOWERS[type].name}　范围 ${st.range.toFixed(1)}${t.onPath ? '<br><b class="good">在敌人路线上</b>' : '<br><span class="dim">不在路线上：只有路过范围内的敌人才会受影响</span>'}<br><span class="dim">Shift+点击 连续建造</span>`
         : `${G.TOWERS[type].name}　射程 ${st.range.toFixed(1)}　伤害 ${fmt(st.dmg)}${t.h >= 2 ? `<br><b class="good">高地加成 +${fmt((st.dM - 1) * 100)}% 伤害</b>` : ''}<br><span class="dim">Shift+点击 连续建造</span>`;
     } else if (h && tool && tool.startsWith('piece:')) {
