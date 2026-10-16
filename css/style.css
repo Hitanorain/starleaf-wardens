@@ -666,3 +666,39 @@ body.on-title #hud-ctrl, body.on-title #side { display: none !important; }
 /* 露娜紧挨着建造栏，技能和建造按钮在同一处 */
 #dock { left: var(--fx); right: var(--fx); gap: 10px; align-items: flex-end; }
 #hero-panel { position: static; }
+
+/* =================== 底部操作区：等高对齐、按钮放大（2026-10-16） =================== */
+:root { --btn-w: 64px; --btn-h: 68px; --btn-ic: 40px; }
+#dock { align-items: stretch; }
+#hero-panel, #build-bar { padding: 7px 10px 8px; }
+#hero-panel { gap: 10px; align-items: flex-end; }
+.hero-face { align-self: center; }
+.portrait, .portrait .ic.big { width: 62px; height: 62px; }
+.xp { width: 58px; }
+.bgroup.hero { padding: 0; }
+.bgroup.hero .bg-label { color: var(--gold); }
+.bg-label { font-size: 11px; letter-spacing: 1px; line-height: 14px; }
+.skills { gap: 5px; }
+.skill { width: var(--btn-w); height: var(--btn-h); border-radius: 12px; }
+.skill .ic { width: var(--btn-ic); height: var(--btn-ic); font-size: 32px; }
+.skill kbd { font-size: 9px; padding: 1px 3px; }
+.skill .ncost { font-size: 11px; }
+.bg-row { gap: 5px; }
+#build-bar .tool { width: var(--btn-w); height: var(--btn-h); padding: 6px 2px 5px; justify-content: space-between; }
+#build-bar .tool .ic { width: var(--btn-ic); height: var(--btn-ic); font-size: 32px; }
+#build-bar .tool .cost { font-size: 13px; }
+#build-bar .tool kbd { font-size: 10px; }
+/* 地形托盘与下方等宽的按钮 */
+#hand-bar { bottom: 124px; padding: 7px 10px; }
+#hand-bar .tool.terra { width: var(--btn-w); height: var(--btn-h); padding: 6px 2px 5px; justify-content: space-between; }
+#hand-bar .tool.terra .ic { width: 32px; height: 32px; font-size: 26px; }
+#hand-bar .tool .nm, #hand-bar .piece .nm { font-size: 12px; }
+#hand-bar .piece { width: 66px; height: var(--btn-h); }
+#hand-bar .piece.reroll { width: 60px; }
+@media (max-width: 1300px) {
+  :root { --btn-w: 54px; --btn-h: 60px; --btn-ic: 32px; }
+  #hand-bar { bottom: 114px; }
+  #build-bar .tool, #hand-bar .tool.terra { width: var(--btn-w); }
+  #build-bar .tool .ic { width: var(--btn-ic); height: var(--btn-ic); font-size: 26px; }
+}
+#guide { top: 62px; }   /* 放在状态条下方一行，窄屏时不会和居中的状态条相碰 */

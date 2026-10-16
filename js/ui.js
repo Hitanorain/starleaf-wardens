@@ -133,11 +133,12 @@
         <div class="portrait" id="hero-portrait" data-tip="tip:hero">${UI.ic('assets/portraits/luna.png', '🧚', 'big')}<span class="lv" id="hero-lv">Lv1</span></div>
         <div class="xp"><i id="hero-xp"></i></div>
       </div>
+      <div class="bgroup hero"><div class="bg-label">露娜 · 技能</div>
       <div class="skills">
         <button class="skill" id="sk-q" data-tip="tip:q">${UI.ic('assets/icons/skill_starfall.png', H.skills.q.icon)}<kbd>Q</kbd><div class="cdmask"></div><span class="cdt"></span></button>
         <button class="skill" id="sk-e" data-tip="tip:e">${UI.ic('assets/icons/skill_bloom.png', H.skills.e.icon)}<kbd>E</kbd><div class="cdmask"></div><span class="cdt"></span></button>
         <button class="skill nuke" id="sk-n" data-tip="tip:nuke">${UI.ic('assets/icons/skill_nuke.png', G.NUKE.icon)}<kbd>G</kbd><div class="cdmask"></div><span class="cdt"></span><span class="ncost" id="nuke-cost"></span></button>
-      </div>`;
+      </div></div>`;
     $('#sk-q').onclick = () => skillQ();
     $('#sk-e').onclick = () => G.Hero.castBloom();
     $('#sk-n').onclick = () => nukeTool();
